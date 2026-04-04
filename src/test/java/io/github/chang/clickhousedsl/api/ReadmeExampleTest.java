@@ -1,6 +1,7 @@
 package io.github.chang.clickhousedsl.api;
 
 import static io.github.chang.clickhousedsl.api.ClickHouseDsl.count;
+import static io.github.chang.clickhousedsl.api.ClickHouseDsl.maxMemoryUsage;
 import static io.github.chang.clickhousedsl.api.ClickHouseDsl.maxThreads;
 import static io.github.chang.clickhousedsl.api.ClickHouseDsl.param;
 import static io.github.chang.clickhousedsl.api.ClickHouseDsl.render;
@@ -43,7 +44,7 @@ class ReadmeExampleTest {
             .groupBy(userName)
             .having(count().gt(param(1L, Long.class)))
             .limit(100)
-            .settings(maxThreads(4), useUncompressedCache(true))
+            .settings(maxThreads(4), maxMemoryUsage(268_435_456L), useUncompressedCache(true))
             .build();
 
         assertThat(render(query)).isEqualTo(
@@ -53,7 +54,7 @@ class ReadmeExampleTest {
                 "INNER JOIN `analytics`.`events` AS `e` ON `u`.`id` = `e`.`user_id` " +
                 "ARRAY JOIN `u`.`tags` PREWHERE `u`.`age` > ? WHERE `u`.`name` = ? " +
                 "GROUP BY `u`.`name` HAVING count() > ? LIMIT ? " +
-                "SETTINGS `max_threads` = ?, `use_uncompressed_cache` = ?"
+                "SETTINGS `max_threads` = ?, `max_memory_usage` = ?, `use_uncompressed_cache` = ?"
         );
     }
 }

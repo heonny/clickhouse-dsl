@@ -66,6 +66,8 @@ class ModelCoverageTest {
         RenderContext context = new RenderContext();
         String placeholder = parameter.render(context);
         RenderedQuery renderedQuery = new RenderedQuery("SELECT ?", context.parameters());
+        ExecutionMetrics metrics = new ExecutionMetrics(1024L, 4);
+        QueryExecutionReport report = new QueryExecutionReport(renderedQuery, metrics);
 
         assertThat(parameter.value()).isEqualTo("alice");
         assertThat(parameter.type()).isEqualTo(String.class);
@@ -73,6 +75,10 @@ class ModelCoverageTest {
         assertThat(context.parameters()).containsExactly("alice");
         assertThat(renderedQuery.sql()).isEqualTo("SELECT ?");
         assertThat(renderedQuery.parameters()).containsExactly("alice");
+        assertThat(metrics.maxMemoryUsageBytes()).isEqualTo(1024L);
+        assertThat(metrics.usedThreads()).isEqualTo(4);
+        assertThat(report.renderedQuery()).isEqualTo(renderedQuery);
+        assertThat(report.metrics()).isEqualTo(metrics);
     }
 
     @Test
@@ -125,14 +131,15 @@ class ModelCoverageTest {
         Query query = ClickHouseDsl.select(userId)
             .from(users)
             .leftJoin(events).on(userId, eventUserId)
-            .settings(ClickHouseDsl.useUncompressedCache(false))
+            .settings(ClickHouseDsl.maxThreads(2), ClickHouseDsl.maxMemoryUsage(4096L), ClickHouseDsl.useUncompressedCache(false))
             .build();
 
         String sql = ClickHouseDsl.render(query);
         ValidationResult result = ClickHouseDsl.analyze(query);
 
         assertThat(sql).isEqualTo(
-            "SELECT `u`.`id` FROM `users` AS `u` LEFT JOIN `events` AS `e` ON `u`.`id` = `e`.`user_id` SETTINGS `use_uncompressed_cache` = ?"
+            "SELECT `u`.`id` FROM `users` AS `u` LEFT JOIN `events` AS `e` ON `u`.`id` = `e`.`user_id` " +
+                "SETTINGS `max_threads` = ?, `max_memory_usage` = ?, `use_uncompressed_cache` = ?"
         );
         assertThat(result.valid()).isTrue();
         assertThat(result.errors()).isEmpty();
@@ -192,6 +199,17 @@ class ModelCoverageTest {
         assertThat(query.setOperations()).isEmpty();
         assertThat(Setting.of("max_threads", 2).name()).isEqualTo(Identifier.of("max_threads"));
         assertThat(Setting.of("max_threads", 2).value()).isEqualTo(2);
+    }
+
+    @Test
+    void executionMetricsRejectInvalidValues() {
+        assertThatThrownBy(() -> new ExecutionMetrics(-1L, 2))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("maxMemoryUsageBytes");
+
+        assertThatThrownBy(() -> new ExecutionMetrics(1L, 0))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("usedThreads");
     }
 
     @Test

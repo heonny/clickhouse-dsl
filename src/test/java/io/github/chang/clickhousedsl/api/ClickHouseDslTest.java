@@ -1,6 +1,7 @@
 package io.github.chang.clickhousedsl.api;
 
 import static io.github.chang.clickhousedsl.api.ClickHouseDsl.count;
+import static io.github.chang.clickhousedsl.api.ClickHouseDsl.maxMemoryUsage;
 import static io.github.chang.clickhousedsl.api.ClickHouseDsl.maxThreads;
 import static io.github.chang.clickhousedsl.api.ClickHouseDsl.rowNumber;
 import static io.github.chang.clickhousedsl.api.ClickHouseDsl.useUncompressedCache;
@@ -44,7 +45,7 @@ class ClickHouseDslTest {
             .having(count().gt(ClickHouseDsl.param(1L, Long.class)))
             .orderBy(userName.asc())
             .limit(10)
-            .settings(maxThreads(4), useUncompressedCache(true))
+            .settings(maxThreads(4), maxMemoryUsage(268_435_456L), useUncompressedCache(true))
             .build();
 
         RenderedQuery rendered = renderer.render(query);
@@ -54,9 +55,9 @@ class ClickHouseDslTest {
                 "INNER JOIN `analytics`.`events` AS `e` ON `u`.`id` = `e`.`user_id` " +
                 "ARRAY JOIN `u`.`tags` SAMPLE ? PREWHERE `u`.`age` > ? WHERE `u`.`name` = ? " +
                 "GROUP BY `u`.`name` HAVING count() > ? ORDER BY `u`.`name` ASC LIMIT ? " +
-                "SETTINGS `max_threads` = ?, `use_uncompressed_cache` = ?"
+                "SETTINGS `max_threads` = ?, `max_memory_usage` = ?, `use_uncompressed_cache` = ?"
         );
-        assertThat(rendered.parameters()).containsExactly(0.5d, 18, "alice", 1L, 10, 4, 1);
+        assertThat(rendered.parameters()).containsExactly(0.5d, 18, "alice", 1L, 10, 4, 268_435_456L, 1);
     }
 
     @Test
@@ -64,6 +65,17 @@ class ClickHouseDslTest {
         assertThatThrownBy(() -> Table.of("users;drop"))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Unsafe identifier");
+    }
+
+    @Test
+    void validatesPositiveSettingBounds() {
+        assertThatThrownBy(() -> maxThreads(0))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("max_threads");
+
+        assertThatThrownBy(() -> maxMemoryUsage(0L))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("max_memory_usage");
     }
 
     @Test

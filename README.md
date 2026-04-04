@@ -10,6 +10,43 @@ Java 17 기반의 ClickHouse typed Query DSL.
 - POJO 중심, immutable 지향, 경량 구조
 - parameter placeholder 기반 렌더링으로 SQL injection 경로 축소
 
+## Getting Started
+
+현재는 로컬 개발 기준으로 바로 빌드해서 쓸 수 있고, 이후 Maven Central 배포를 목표로 한다.
+
+Gradle:
+
+```gradle
+dependencies {
+    implementation("io.github.chang:clickhouse-dsl:0.1.0-SNAPSHOT")
+}
+```
+
+Maven:
+
+```xml
+<dependency>
+    <groupId>io.github.chang</groupId>
+    <artifactId>clickhouse-dsl</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+</dependency>
+```
+
+로컬에서 바로 확인하려면:
+
+```bash
+./gradlew test
+./gradlew check
+```
+
+처음 읽는 순서는 이 정도면 충분하다.
+
+1. 아래 `Quick Example`
+2. [`ReadmeExampleTest.java`](./src/test/java/io/github/chang/clickhousedsl/api/ReadmeExampleTest.java)
+3. `samples/basic`
+4. `samples/advanced`
+5. `samples/realworld`
+
 ## Current Scope
 
 현재 구현된 범위:
@@ -31,6 +68,7 @@ Java 17 기반의 ClickHouse typed Query DSL.
 - window function (`rowNumber`, `sum(...).over(...)`)
 - aggregate state helpers (`sumState`, `sumMerge`)
 - `EXPLAIN` query model + raw explain text analyzer
+- execution metrics POJO (`maxMemoryUsageBytes`, `usedThreads`) for future executor wiring
 
 아직 구현하지 않은 것:
 
@@ -95,7 +133,7 @@ Query query = select(
     .groupBy(userName)
     .having(count().gt(param(1L, Long.class)))
     .limit(100)
-    .settings(maxThreads(4), useUncompressedCache(true))
+    .settings(maxThreads(4), maxMemoryUsage(268_435_456L), useUncompressedCache(true))
     .build();
 
 String sql = render(query);
@@ -113,8 +151,16 @@ WHERE `u`.`name` = ?
 GROUP BY `u`.`name`
 HAVING count() > ?
 LIMIT ?
-SETTINGS `max_threads` = ?, `use_uncompressed_cache` = ?
+SETTINGS `max_threads` = ?, `max_memory_usage` = ?, `use_uncompressed_cache` = ?
 ```
+
+메모리/스레드 제어는 지금 바로 DSL에서 줄 수 있다.
+
+- `maxThreads(int)`
+- `maxMemoryUsage(long bytes)`
+- `useUncompressedCache(boolean)`
+
+실제로 사용된 최대 메모리값은 renderer만으로는 알 수 없다. 이 값은 ClickHouse 실행 응답이나 query log를 읽는 executor가 있어야 채울 수 있다. 그래서 현재는 future executor가 채울 수 있도록 `ExecutionMetrics` / `QueryExecutionReport` POJO만 먼저 제공한다.
 
 ## WITH / UNION Example
 
@@ -248,11 +294,11 @@ Query query = select(
 | Sort / group references | 문자열 참조 | typed reference expression |
 | Regression testing | raw SQL snapshot만 가능 | DSL + SQL snapshot 둘 다 가능 |
 
-이 예제는 [`SampleAggregationQueriesTest.java`](./src/test/java/io/github/chang/clickhousedsl/samples/SampleAggregationQueriesTest.java) 와 같은 계열의 검증을 위해 쓰는 패턴이다. 즉, DSL이 예쁘게 보이는지만 확인하는 게 아니라, 기존 문자열 SQL과 논리적으로 같은 SQL을 꾸준히 내는지 테스트로 고정한다.
+이 예제는 [`SampleAggregationQueriesTest.java`](./src/test/java/io/github/chang/clickhousedsl/samples/basic/SampleAggregationQueriesTest.java) 와 같은 계열의 검증을 위해 쓰는 패턴이다. 즉, DSL이 예쁘게 보이는지만 확인하는 게 아니라, 기존 문자열 SQL과 논리적으로 같은 SQL을 꾸준히 내는지 테스트로 고정한다.
 
 ## Sample Cases
 
-복잡한 샘플은 [`src/test/java/io/github/chang/clickhousedsl/samples`](./src/test/java/io/github/chang/clickhousedsl/samples) 아래에 모은다.
+복잡한 샘플은 [`src/test/java/io/github/chang/clickhousedsl/samples`](./src/test/java/io/github/chang/clickhousedsl/samples) 아래를 카탈로그처럼 쓴다.
 
 의도는 두 가지다.
 
@@ -265,7 +311,9 @@ Query query = select(
 - 절대 경로, 사내 스키마, 내부 서비스명 금지
 - “동일 SQL 렌더링” 또는 “동일한 논리 구조”를 테스트로 고정
 
-현재 샘플:
+### basic
+
+경로: [`src/test/java/io/github/chang/clickhousedsl/samples/basic`](./src/test/java/io/github/chang/clickhousedsl/samples/basic)
 
 - `SampleAggregationQueriesTest`
   - 집계 + alias + 함수 중첩
@@ -273,6 +321,48 @@ Query query = select(
 - `DynamicQuerySamplesTest`
   - 조건 유무에 따라 where/order/limit이 달라지는 동적 조회 샘플
   - annotation 기반 native query에서 특히 지저분해지는 케이스를 의도
+
+### advanced
+
+경로: [`src/test/java/io/github/chang/clickhousedsl/samples/advanced`](./src/test/java/io/github/chang/clickhousedsl/samples/advanced)
+
+- `WithUnionSamplesTest`
+  - CTE + `UNION ALL`
+  - `WITH aggregated AS ...` 류 구조를 DSL에서 어떻게 읽히게 만들지 보여주는 샘플
+- `WindowFunctionSamplesTest`
+  - `rowNumber()` 와 running total window
+  - 분석/랭킹 계열 조회에서 window function 표현력을 보여주는 샘플
+- `AggregateStateSamplesTest`
+  - `countMerge`, `countIfMerge`, `uniqMerge`, `sumMerge`
+  - ClickHouse rollup/state table을 다루는 실무형 샘플
+- `ExplainSamplesTest`
+  - `EXPLAIN PLAN` 렌더링 + raw explain text 분석
+  - 쿼리 생성 이후 진단까지 이어지는 흐름을 보여주는 샘플
+
+### realworld
+
+경로: [`src/test/java/io/github/chang/clickhousedsl/samples/realworld`](./src/test/java/io/github/chang/clickhousedsl/samples/realworld)
+
+- `RefinedCompanyStyleSamplesTest`
+  - 실무 쿼리 구조를 정제한 공개용 샘플
+  - `WITH aggregated`, `WITH filtered`, state merge, 동적 필터, 정렬/페이지네이션이 한 번에 들어간다
+
+추천 읽기 순서:
+
+1. `SampleAggregationQueriesTest`
+   - 가장 짧다. 이 프로젝트가 무엇을 하려는지 바로 보인다.
+2. `DynamicQuerySamplesTest`
+   - 왜 `JdbcTemplate` / `@NativeQuery` 대비 동적쿼리 유연성이 중요한지 보인다.
+3. `WithUnionSamplesTest`
+   - 쿼리 구조가 커졌을 때도 POJO 조립이 유지되는지 본다.
+4. `WindowFunctionSamplesTest`
+   - ClickHouse 분석 쿼리 표현력을 확인한다.
+5. `AggregateStateSamplesTest`
+   - rollup/state 테이블 계열 실무 쿼리 감각을 본다.
+6. `RefinedCompanyStyleSamplesTest`
+   - 실제 회사 쿼리 복잡도를 정제해서 가져온 샘플로, “실전형 구조”를 본다.
+7. `ExplainSamplesTest`
+   - 생성 후 진단 흐름까지 연결한다.
 
 ## Validation Philosophy
 

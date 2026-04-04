@@ -95,7 +95,17 @@ public final class ClickHouseDsl {
     }
 
     public static Setting maxThreads(int value) {
+        if (value <= 0) {
+            throw new IllegalArgumentException("max_threads must be positive");
+        }
         return Setting.of("max_threads", value);
+    }
+
+    public static Setting maxMemoryUsage(long bytes) {
+        if (bytes <= 0L) {
+            throw new IllegalArgumentException("max_memory_usage must be positive");
+        }
+        return Setting.of("max_memory_usage", bytes);
     }
 
     public static Setting useUncompressedCache(boolean enabled) {
