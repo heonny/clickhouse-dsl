@@ -15,6 +15,14 @@
 - POJO 중심, immutable 지향, 경량 구조
 - parameter placeholder 기반 렌더링으로 SQL injection 경로 축소
 
+## AI Guides
+
+If you want an AI agent to use this repository in a predictable way, start here.
+
+- [`skills/clickhouse-dsl/SKILL.md`](./skills/clickhouse-dsl/SKILL.md)
+- [`docs/ai/CODEX.md`](./docs/ai/CODEX.md)
+- [`docs/ai/CLAUDE.md`](./docs/ai/CLAUDE.md)
+
 ## Getting Started
 
 지금은 Maven Central에 release 배포가 가능한 상태입니다. 바로 dependency로 붙여서 시작할 수 있습니다.
@@ -67,8 +75,8 @@ GitHub Actions로 배포할 때는 아래 secrets를 등록하면 됩니다.
 
 릴리즈 규칙과 실제 배포 절차는 아래 문서에 정리해두었습니다.
 
-- [VERSIONING.md](/Users/chang/Documents/workspace/backend/clickhouse-dsl/VERSIONING.md)
-- [RELEASE.md](/Users/chang/Documents/workspace/backend/clickhouse-dsl/RELEASE.md)
+- [`VERSIONING.md`](./VERSIONING.md)
+- [`RELEASE.md`](./RELEASE.md)
 
 처음 보면 이 순서대로 읽는 게 가장 편합니다.
 
