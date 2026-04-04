@@ -48,6 +48,23 @@ Java 17 기반의 ClickHouse typed Query DSL.
 
 `범용 DSL보다 ClickHouse에 더 충실하고, 문자열 SQL보다 더 안전한 typed middle layer`
 
+## Why Not JPA / JdbcTemplate / MyBatis
+
+대표 비교는 이 관점으로 보는 게 맞다.
+
+| Approach | 장점 | 한계 |
+|--------|------|------|
+| JPA / Criteria | 엔티티 중심 CRUD에는 익숙하다 | ClickHouse 문법 충실도가 낮고, 분석 쿼리나 특화 함수 표현이 어색하다 |
+| JdbcTemplate + string SQL | 가장 직접적이고 빠르다 | 컴파일 안정성이 없고, 동적 조건이 늘수록 문자열 조립이 급격히 나빠진다 |
+| MyBatis XML / `@NativeQuery` | SQL 자체는 명시적이라 익숙하다 | 복잡한 동적 쿼리는 XML/문자열 분기 관리가 어렵고, IDE 차원의 구조 검증이 약하다 |
+| `clickhouse-dsl` | ClickHouse 문법을 유지하면서 compile guardrail, 테스트 스냅샷, 동적쿼리 조립성을 같이 챙긴다 | 아직 executor/benchmark/함수 타입 시스템 전체는 진행 중이다 |
+
+이 프로젝트가 특히 강하게 가져가려는 포인트는 세 가지다.
+
+- `컴파일 안정성`: 가능한 범위의 쿼리 실수를 컴파일 단계로 끌어올린다
+- `테스트 용이성`: DSL 객체와 렌더링 SQL을 둘 다 snapshot처럼 고정할 수 있다
+- `동적쿼리 유연성`: `JdbcTemplate`나 annotation 기반 native query에서 지저분해지는 조건 조합을 POJO 조립으로 가져온다
+
 ## Quick Example
 
 ```java
@@ -231,7 +248,31 @@ Query query = select(
 | Sort / group references | 문자열 참조 | typed reference expression |
 | Regression testing | raw SQL snapshot만 가능 | DSL + SQL snapshot 둘 다 가능 |
 
-이 예제는 [`SampleQuerySnapshotTest.java`](./src/test/java/io/github/chang/clickhousedsl/api/SampleQuerySnapshotTest.java) 와 같은 계열의 검증을 위해 쓰는 패턴이다. 즉, DSL이 예쁘게 보이는지만 확인하는 게 아니라, 기존 문자열 SQL과 논리적으로 같은 SQL을 꾸준히 내는지 테스트로 고정한다.
+이 예제는 [`SampleAggregationQueriesTest.java`](./src/test/java/io/github/chang/clickhousedsl/samples/SampleAggregationQueriesTest.java) 와 같은 계열의 검증을 위해 쓰는 패턴이다. 즉, DSL이 예쁘게 보이는지만 확인하는 게 아니라, 기존 문자열 SQL과 논리적으로 같은 SQL을 꾸준히 내는지 테스트로 고정한다.
+
+## Sample Cases
+
+복잡한 샘플은 [`src/test/java/io/github/chang/clickhousedsl/samples`](./src/test/java/io/github/chang/clickhousedsl/samples) 아래에 모은다.
+
+의도는 두 가지다.
+
+1. README 대표 예제는 대비형으로 짧고 선명하게 유지
+2. 실제 복잡도에 가까운 조회/집계 케이스는 샘플 테스트로 축적
+
+샘플 작성 원칙:
+
+- 회사 쿼리에서 구조만 차용하고 이름은 전부 중립화
+- 절대 경로, 사내 스키마, 내부 서비스명 금지
+- “동일 SQL 렌더링” 또는 “동일한 논리 구조”를 테스트로 고정
+
+현재 샘플:
+
+- `SampleAggregationQueriesTest`
+  - 집계 + alias + 함수 중첩
+  - README before/after와 연결되는 공개용 샘플
+- `DynamicQuerySamplesTest`
+  - 조건 유무에 따라 where/order/limit이 달라지는 동적 조회 샘플
+  - annotation 기반 native query에서 특히 지저분해지는 케이스를 의도
 
 ## Validation Philosophy
 

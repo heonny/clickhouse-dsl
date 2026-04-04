@@ -1,6 +1,5 @@
-package io.github.chang.clickhousedsl.api;
+package io.github.chang.clickhousedsl.samples;
 
-import static io.github.chang.clickhousedsl.api.ClickHouseDsl.aggregateFunction;
 import static io.github.chang.clickhousedsl.api.ClickHouseDsl.count;
 import static io.github.chang.clickhousedsl.api.ClickHouseDsl.function;
 import static io.github.chang.clickhousedsl.api.ClickHouseDsl.literal;
@@ -15,28 +14,28 @@ import io.github.chang.clickhousedsl.model.Table;
 import io.github.chang.clickhousedsl.render.ClickHouseRenderer;
 import org.junit.jupiter.api.Test;
 
-class SampleQuerySnapshotTest {
+class SampleAggregationQueriesTest {
 
     private final ClickHouseRenderer renderer = new ClickHouseRenderer();
 
     @Test
-    void matchesSampleAnalyticsErrorSummaryQuery() {
+    void renders_public_error_summary_sample() {
         Table errors = Table.of("app_errors");
 
         var appId = errors.column("app_id", Long.class);
-        var timestamp = errors.column("event_time", Long.class);
-        var message = errors.column("event_message", String.class);
+        var eventTime = errors.column("event_time", Long.class);
+        var eventMessage = errors.column("event_message", String.class);
 
         Query query = select(
                 count().as("count"),
                 function("toUInt8", Integer.class, literal(0, Integer.class)).as("isOther"),
-                message.as("message")
+                eventMessage.as("message")
             )
             .from(errors)
             .where(
                 appId.eq(param(100L, Long.class))
-                    .and(timestamp.gte(function("toDateTime64", Long.class, param("2026-04-01T00:00:00", String.class), literal(3, Integer.class), literal("UTC", String.class))))
-                    .and(timestamp.lt(
+                    .and(eventTime.gte(function("toDateTime64", Long.class, param("2026-04-01T00:00:00", String.class), literal(3, Integer.class), literal("UTC", String.class))))
+                    .and(eventTime.lt(
                         function(
                             "toDateTime64",
                             Long.class,
