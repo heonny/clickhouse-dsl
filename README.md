@@ -1,8 +1,13 @@
 # clickhouse-dsl
 
-Java 17 기반의 ClickHouse typed Query DSL.
+![coverage](./docs/badges/coverage.svg)
+![tests](./docs/badges/tests.svg)
+![version](./docs/badges/version.svg)
+![license](./docs/badges/license.svg)
 
-목표는 단순한 string builder가 아니다.
+`clickhouse-dsl`은 Java 17에서 ClickHouse 쿼리를 조금 더 안전하고 읽기 쉽게 만들기 위한 typed Query DSL입니다.
+
+이 프로젝트는 직접 DB 실행까지 책임지기보다, Java 코드에서 쿼리를 조립하고 검증한 뒤 안전한 SQL 문자열로 렌더링하는 데 초점을 둡니다.
 
 - ClickHouse 특화 문법을 Java 코드에서 자연스럽게 표현
 - 가능한 범위의 compile-time guardrail 제공
@@ -12,13 +17,13 @@ Java 17 기반의 ClickHouse typed Query DSL.
 
 ## Getting Started
 
-현재는 Maven Central release 배포까지 가능한 상태다.
+지금은 Maven Central에 release 배포가 가능한 상태입니다. 바로 dependency로 붙여서 시작할 수 있습니다.
 
 Gradle:
 
 ```gradle
 dependencies {
-    implementation("io.github.heonny:clickhouse-dsl:0.1.1")
+    implementation("io.github.heonny:clickhouse-dsl:0.1.2")
 }
 ```
 
@@ -28,44 +33,44 @@ Maven:
 <dependency>
     <groupId>io.github.heonny</groupId>
     <artifactId>clickhouse-dsl</artifactId>
-    <version>0.1.1</version>
+    <version>0.1.2</version>
 </dependency>
 ```
 
-로컬에서 바로 확인하려면:
+로컬에서 먼저 상태를 확인해보려면:
 
 ```bash
 ./gradlew test
 ./gradlew check
 ```
 
-Maven Central 배포용 메타데이터와 signing 스켈레톤은 이미 포함되어 있다.
+Maven Central 배포에 필요한 메타데이터와 signing 설정도 이미 프로젝트 안에 들어 있습니다.
 
 - `./gradlew publishToMavenLocal`
 - `./gradlew releaseToCentral`
 
-환경 변수 또는 `gradle.properties`로 아래 값을 주면 된다.
+환경 변수나 `gradle.properties`에는 아래 값이 필요합니다.
 
 - `CENTRAL_PORTAL_TOKEN_USERNAME`
 - `CENTRAL_PORTAL_TOKEN_PASSWORD`
 - `SIGNING_IN_MEMORY_KEY`
 - `SIGNING_IN_MEMORY_KEY_PASSWORD`
 
-현재 build는 release-only publishing 기준으로 맞춰져 있다. 즉, `-SNAPSHOT` 버전으로는 publish가 실패하도록 막아뒀다.
+현재 build는 release-only publishing 기준으로 맞춰져 있어서, `-SNAPSHOT` 버전은 publish가 실패하도록 막아두었습니다.
 
-GitHub Actions 기준으로는 아래 secrets를 등록하면 된다.
+GitHub Actions로 배포할 때는 아래 secrets를 등록하면 됩니다.
 
 - `CENTRAL_PORTAL_TOKEN_USERNAME`
 - `CENTRAL_PORTAL_TOKEN_PASSWORD`
 - `SIGNING_IN_MEMORY_KEY`
 - `SIGNING_IN_MEMORY_KEY_PASSWORD`
 
-릴리즈 규칙과 실제 배포 절차는 아래 문서를 보면 된다.
+릴리즈 규칙과 실제 배포 절차는 아래 문서에 정리해두었습니다.
 
 - [VERSIONING.md](/Users/chang/Documents/workspace/backend/clickhouse-dsl/VERSIONING.md)
 - [RELEASE.md](/Users/chang/Documents/workspace/backend/clickhouse-dsl/RELEASE.md)
 
-처음 읽는 순서는 이 정도면 충분하다.
+처음 보면 이 순서대로 읽는 게 가장 편합니다.
 
 1. 아래 `Quick Example`
 2. [`ReadmeExampleTest.java`](./src/test/java/io/github/heonny/clickhousedsl/api/ReadmeExampleTest.java)
@@ -75,7 +80,7 @@ GitHub Actions 기준으로는 아래 secrets를 등록하면 된다.
 
 ## Current Scope
 
-현재 구현된 범위:
+현재 지원하는 범위는 아래와 같습니다.
 
 - `SELECT`
 - `FROM`
@@ -94,11 +99,11 @@ GitHub Actions 기준으로는 아래 secrets를 등록하면 된다.
 - window function (`rowNumber`, `sum(...).over(...)`)
 - aggregate state helpers (`sumState`, `sumMerge`)
 - `EXPLAIN` query model + raw explain text analyzer
-- execution metrics POJO (`maxMemoryUsageBytes`, `usedThreads`) for future executor wiring
+- execution metrics POJO (`maxMemoryUsageBytes`, `usedThreads`)
 
-아직 구현하지 않은 것:
+아직 남아 있는 부분도 있습니다.
 
-- 실제 JDBC / HTTP transport executor
+- 실제 ClickHouse 서버와 붙는 transport 고도화
 - ClickHouse 서버 연동 explain fetch
 - benchmark runner
 - 함수 타입 시스템의 전체 커버리지
@@ -106,13 +111,13 @@ GitHub Actions 기준으로는 아래 secrets를 등록하면 된다.
 
 ## Safe Usage
 
-운영 코드에서는 아래 순서를 권장한다.
+운영 코드에서는 아래 흐름을 권장합니다.
 
 1. DSL로 `Query`를 만든다.
 2. `validateOrThrow(query)` 또는 `renderValidated*` 경로를 사용한다.
 3. 실패 시 `QueryValidationException`의 `validationResult()`를 읽어 사용자 메시지나 로그를 만든다.
 
-권장 경로:
+가장 무난한 경로는 이렇습니다.
 
 ```java
 Query query = select(userName, count())
@@ -123,32 +128,33 @@ Query query = select(userName, count())
 RenderedQuery rendered = renderValidatedQuery(query);
 ```
 
-또는:
+그리고 이렇게 기존 실행 도구에 붙이면 됩니다.
 
 ```java
-validateOrThrow(query);
-String sql = render(query);
+RenderedQuery rendered = renderValidatedQuery(query);
+
+jdbcTemplate.query(
+    rendered.sql(),
+    rendered.parameters().toArray(),
+    rowMapper
+);
 ```
 
-권장하지 않는 경로:
+반대로 아래 패턴은 피하는 편이 좋습니다.
 
-- 외부 입력이 섞인 query를 `render(query)`만 호출하고 바로 실행
+- 외부 입력이 섞인 query를 `render(query)`만 호출하고 바로 실행하는 패턴
 - `ValidationResult`를 무시한 채 analyzer 결과를 버리는 패턴
 - 같은 setting 이름을 여러 번 넣는 패턴
 
-executor 경계에서는 직접 `render(query)`보다 아래 패턴을 권장한다.
+실행은 이 라이브러리 안에서 끝까지 끌고 가기보다, 이미 쓰고 있는 `JdbcTemplate`, MyBatis, 혹은 사내 실행 계층에 넘기는 편을 권장합니다.
 
 ```java
-SafeQueryExecutor executor = new SafeQueryExecutor(renderedQuery -> {
-    throw new UnsupportedOperationException("transport not wired yet");
-});
-
-QueryExecutionReport report = executor.execute(query);
+RenderedQuery rendered = renderValidatedQuery(query);
 ```
 
-이 wrapper는 내부에서 `renderValidatedQuery(query)`를 강제하므로, invalid query가 transport까지 내려가지 않게 한다.
+프로젝트 안에 있는 executor 관련 코드는 보조적인 skeleton 성격에 가깝고, 현재 이 라이브러리의 중심 기능은 아닙니다.
 
-현재 validation이 특히 강하게 보는 항목:
+현재 validation이 특히 신경 쓰는 항목은 다음과 같습니다.
 
 - aggregate와 `GROUP BY` 정합성
 - `WHERE` / `PREWHERE`의 aggregate misuse
@@ -161,11 +167,11 @@ QueryExecutionReport report = executor.execute(query);
 
 ## Aggregate State Safety
 
-`AggregateState` 계열은 ClickHouse에서 특히 실수하기 쉬운 구간이다. 이 라이브러리에서는 아래 패턴을 권장한다.
+`AggregateState` 계열은 ClickHouse에서 실수하기 쉬운 구간이라, 아래처럼 쓰는 것을 권장합니다.
 
 1. rollup/materialized view 테이블에서는 `stateColumn(...)`으로 state 컬럼을 선언
 2. 최종 query에서는 `countMerge`, `countIfMerge`, `uniqMerge`, `sumMerge`로 바로 merge
-3. 운영 경계에서는 `renderValidatedQuery(query)`를 사용
+3. 마지막에는 `renderValidatedQuery(query)`로 SQL과 파라미터를 뽑아 기존 실행 도구에 넘김
 
 예:
 
@@ -188,7 +194,7 @@ Query query = select(
 RenderedQuery rendered = renderValidatedQuery(query);
 ```
 
-권장 이유:
+이렇게 두는 이유는 단순합니다.
 
 - raw state value를 그대로 노출하는 실수를 줄인다
 - aggregate merge helper가 query 의도를 더 명확하게 만든다
@@ -196,24 +202,22 @@ RenderedQuery rendered = renderValidatedQuery(query);
 
 ## Design Position
 
-이 라이브러리는 범용 SQL DSL이 아니다.
-
-포지션은 이렇다.
+이 라이브러리는 범용 SQL DSL이나 ORM을 목표로 하지 않습니다.
 
 `범용 DSL보다 ClickHouse에 더 충실하고, 문자열 SQL보다 더 안전한 typed middle layer`
 
 ## Why Not JPA / JdbcTemplate / MyBatis
 
-대표 비교는 이 관점으로 보는 게 맞다.
+비슷한 선택지와 비교하면 이런 차이가 있습니다.
 
 | Approach | 장점 | 한계 |
 |--------|------|------|
 | JPA / Criteria | 엔티티 중심 CRUD에는 익숙하다 | ClickHouse 문법 충실도가 낮고, 분석 쿼리나 특화 함수 표현이 어색하다 |
 | JdbcTemplate + string SQL | 가장 직접적이고 빠르다 | 컴파일 안정성이 없고, 동적 조건이 늘수록 문자열 조립이 급격히 나빠진다 |
 | MyBatis XML / `@NativeQuery` | SQL 자체는 명시적이라 익숙하다 | 복잡한 동적 쿼리는 XML/문자열 분기 관리가 어렵고, IDE 차원의 구조 검증이 약하다 |
-| `clickhouse-dsl` | ClickHouse 문법을 유지하면서 compile guardrail, 테스트 스냅샷, 동적쿼리 조립성을 같이 챙긴다 | 아직 executor/benchmark/함수 타입 시스템 전체는 진행 중이다 |
+| `clickhouse-dsl` | ClickHouse 문법을 유지하면서 compile guardrail, 테스트 스냅샷, 동적쿼리 조립성을 같이 챙긴다 | 실행 자체는 `JdbcTemplate` 같은 기존 도구와 조합해서 쓰는 쪽이 더 자연스럽다 |
 
-이 프로젝트가 특히 강하게 가져가려는 포인트는 세 가지다.
+특히 아래 세 가지를 중요하게 보고 있습니다.
 
 - `컴파일 안정성`: 가능한 범위의 쿼리 실수를 컴파일 단계로 끌어올린다
 - `테스트 용이성`: DSL 객체와 렌더링 SQL을 둘 다 snapshot처럼 고정할 수 있다
