@@ -1,0 +1,151 @@
+package io.github.chang.clickhousedsl.api;
+
+import io.github.chang.clickhousedsl.model.Expression;
+import io.github.chang.clickhousedsl.model.Join;
+import io.github.chang.clickhousedsl.model.JoinType;
+import io.github.chang.clickhousedsl.model.Query;
+import io.github.chang.clickhousedsl.model.Setting;
+import io.github.chang.clickhousedsl.model.Sort;
+import io.github.chang.clickhousedsl.model.Table;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+
+final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.QueryStep, ClickHouseDsl.GroupedQueryStep, ClickHouseDsl.JoinOnStep {
+
+    private final List<Expression<?>> selections;
+    private final List<Join> joins = new ArrayList<>();
+    private final List<Expression<?>> arrayJoins = new ArrayList<>();
+    private final List<Expression<?>> groupBy = new ArrayList<>();
+    private final List<Sort> orderBy = new ArrayList<>();
+    private final List<Setting> settings = new ArrayList<>();
+
+    private Table from;
+    private Double sampleRatio;
+    private Expression<Boolean> prewhere;
+    private Expression<Boolean> where;
+    private Expression<Boolean> having;
+    private Integer limit;
+    private JoinType pendingJoinType;
+    private Table pendingJoinTable;
+
+    QueryBuilder(Expression<?>... selections) {
+        this.selections = Arrays.asList(selections);
+        if (this.selections.isEmpty()) {
+            throw new IllegalArgumentException("At least one selection is required");
+        }
+    }
+
+    @Override
+    public ClickHouseDsl.QueryStep from(Table table) {
+        this.from = Objects.requireNonNull(table, "table");
+        return this;
+    }
+
+    @Override
+    public ClickHouseDsl.QueryStep prewhere(Expression<Boolean> expression) {
+        this.prewhere = Objects.requireNonNull(expression, "expression");
+        return this;
+    }
+
+    @Override
+    public ClickHouseDsl.QueryStep where(Expression<Boolean> expression) {
+        this.where = Objects.requireNonNull(expression, "expression");
+        return this;
+    }
+
+    @Override
+    public ClickHouseDsl.JoinOnStep innerJoin(Table table) {
+        this.pendingJoinType = JoinType.INNER;
+        this.pendingJoinTable = Objects.requireNonNull(table, "table");
+        return this;
+    }
+
+    @Override
+    public ClickHouseDsl.JoinOnStep leftJoin(Table table) {
+        this.pendingJoinType = JoinType.LEFT;
+        this.pendingJoinTable = Objects.requireNonNull(table, "table");
+        return this;
+    }
+
+    @Override
+    public <T> ClickHouseDsl.QueryStep on(Expression<T> left, Expression<T> right) {
+        joins.add(new Join(pendingJoinType, pendingJoinTable, left, right));
+        pendingJoinType = null;
+        pendingJoinTable = null;
+        return this;
+    }
+
+    @Override
+    public ClickHouseDsl.QueryStep arrayJoin(Expression<?>... expressions) {
+        arrayJoins.addAll(Arrays.asList(expressions));
+        return this;
+    }
+
+    @Override
+    public ClickHouseDsl.QueryStep sample(double ratio) {
+        if (ratio <= 0.0d || ratio > 1.0d) {
+            throw new IllegalArgumentException("Sample ratio must be in (0, 1]");
+        }
+        this.sampleRatio = ratio;
+        return this;
+    }
+
+    @Override
+    public ClickHouseDsl.GroupedQueryStep groupBy(Expression<?>... expressions) {
+        groupBy.addAll(Arrays.asList(expressions));
+        return this;
+    }
+
+    @Override
+    public ClickHouseDsl.GroupedQueryStep having(Expression<Boolean> expression) {
+        this.having = Objects.requireNonNull(expression, "expression");
+        return this;
+    }
+
+    @Override
+    public ClickHouseDsl.QueryStep orderBy(Sort... sorts) {
+        orderBy.addAll(Arrays.asList(sorts));
+        return this;
+    }
+
+    @Override
+    public ClickHouseDsl.QueryStep limit(int limit) {
+        if (limit <= 0) {
+            throw new IllegalArgumentException("Limit must be positive");
+        }
+        this.limit = limit;
+        return this;
+    }
+
+    @Override
+    public ClickHouseDsl.QueryStep settings(Setting... settings) {
+        this.settings.addAll(Arrays.asList(settings));
+        return this;
+    }
+
+    @Override
+    public Query build() {
+        if (from == null) {
+            throw new IllegalStateException("FROM is required");
+        }
+        if (pendingJoinType != null || pendingJoinTable != null) {
+            throw new IllegalStateException("Join must be completed with ON");
+        }
+        return new Query(
+            selections,
+            from,
+            joins,
+            arrayJoins,
+            sampleRatio,
+            prewhere,
+            where,
+            groupBy,
+            having,
+            orderBy,
+            limit,
+            settings
+        );
+    }
+}
