@@ -12,7 +12,7 @@ public final class Setting {
 
     private Setting(Identifier name, Object value) {
         this.name = Objects.requireNonNull(name, "name");
-        this.value = value;
+        this.value = Objects.requireNonNull(value, "value");
     }
 
     /**

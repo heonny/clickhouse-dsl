@@ -46,4 +46,22 @@ public final class BinaryArithmeticExpression<T> implements Expression<T> {
     public boolean aggregate() {
         return aggregate;
     }
+
+    /**
+     * Returns the left operand.
+     *
+     * @return left operand
+     */
+    public Expression<?> left() {
+        return left;
+    }
+
+    /**
+     * Returns the right operand.
+     *
+     * @return right operand
+     */
+    public Expression<?> right() {
+        return right;
+    }
 }

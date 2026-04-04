@@ -11,6 +11,7 @@ import io.github.heonny.clickhousedsl.model.AggregateExpression;
 import io.github.heonny.clickhousedsl.model.AggregateStateExpression;
 import io.github.heonny.clickhousedsl.model.BinaryArithmeticExpression;
 import io.github.heonny.clickhousedsl.model.Query;
+import io.github.heonny.clickhousedsl.model.RenderedQuery;
 import io.github.heonny.clickhousedsl.model.Setting;
 import io.github.heonny.clickhousedsl.model.Sort;
 import io.github.heonny.clickhousedsl.model.Table;
@@ -19,6 +20,7 @@ import io.github.heonny.clickhousedsl.model.WindowSpec;
 import io.github.heonny.clickhousedsl.model.WithClause;
 import io.github.heonny.clickhousedsl.render.ClickHouseRenderer;
 import io.github.heonny.clickhousedsl.validate.SemanticAnalyzer;
+import io.github.heonny.clickhousedsl.validate.QueryValidationException;
 import io.github.heonny.clickhousedsl.validate.ValidationResult;
 
 /**
@@ -312,6 +314,28 @@ public final class ClickHouseDsl {
     }
 
     /**
+     * Validates a query before rendering and returns SQL only.
+     *
+     * @param query query to validate and render
+     * @return SQL string with placeholders
+     * @throws QueryValidationException when semantic validation fails
+     */
+    public static String renderValidated(Query query) {
+        return new ClickHouseRenderer().renderValidated(query).sql();
+    }
+
+    /**
+     * Validates a query before rendering and returns SQL plus parameters.
+     *
+     * @param query query to validate and render
+     * @return rendered query snapshot
+     * @throws QueryValidationException when semantic validation fails
+     */
+    public static RenderedQuery renderValidatedQuery(Query query) {
+        return new ClickHouseRenderer().renderValidated(query);
+    }
+
+    /**
      * Renders an explain query to SQL only.
      *
      * @param explainQuery explain request
@@ -329,6 +353,22 @@ public final class ClickHouseDsl {
      */
     public static ValidationResult analyze(Query query) {
         return new SemanticAnalyzer().validate(query);
+    }
+
+    /**
+     * Validates a query and throws a structured exception on the first invalid result set.
+     *
+     * <p>This is useful at integration boundaries where callers want fail-fast behavior instead of
+     * manually inspecting a {@link ValidationResult}.
+     *
+     * @param query query to validate
+     * @return the same query when validation succeeds
+     * @throws QueryValidationException when semantic validation fails
+     */
+    public static Query validateOrThrow(Query query) {
+        ValidationResult validationResult = analyze(query);
+        validationResult.throwIfInvalid();
+        return query;
     }
 
     /**

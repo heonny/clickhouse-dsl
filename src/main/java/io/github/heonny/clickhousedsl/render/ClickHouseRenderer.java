@@ -1,5 +1,6 @@
 package io.github.heonny.clickhousedsl.render;
 
+import io.github.heonny.clickhousedsl.api.ClickHouseDsl;
 import io.github.heonny.clickhousedsl.model.Expression;
 import io.github.heonny.clickhousedsl.model.Join;
 import io.github.heonny.clickhousedsl.model.Query;
@@ -31,6 +32,20 @@ public final class ClickHouseRenderer {
         StringBuilder sql = new StringBuilder();
         renderQuery(sql, query, context);
         return new RenderedQuery(sql.toString(), context.parameters());
+    }
+
+    /**
+     * Validates a query before rendering it.
+     *
+     * <p>This is the safest render entry point for integration boundaries where invalid queries
+     * should fail immediately instead of leaking deeper into the calling application.
+     *
+     * @param query query to validate and render
+     * @return rendered SQL plus bound parameters
+     */
+    public RenderedQuery renderValidated(Query query) {
+        ClickHouseDsl.validateOrThrow(query);
+        return render(query);
     }
 
     private void renderQuery(StringBuilder sql, Query query, RenderContext context) {

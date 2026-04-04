@@ -16,6 +16,7 @@ import io.github.heonny.clickhousedsl.model.RenderedQuery;
 import io.github.heonny.clickhousedsl.model.Table;
 import io.github.heonny.clickhousedsl.render.ClickHouseRenderer;
 import io.github.heonny.clickhousedsl.validate.SemanticAnalyzer;
+import io.github.heonny.clickhousedsl.validate.ValidationClause;
 import org.junit.jupiter.api.Test;
 
 class ClickHouseDslTest {
@@ -115,6 +116,9 @@ class ClickHouseDslTest {
         assertThat(analyzer.validate(query).errors())
             .extracting(error -> error.code())
             .containsExactly("GROUP_BY_REQUIRED");
+        assertThat(analyzer.validate(query).errors())
+            .extracting(error -> error.clause())
+            .containsExactly(ValidationClause.SELECT);
     }
 
     @Test
@@ -142,6 +146,74 @@ class ClickHouseDslTest {
         assertThat(analyzer.validate(query).errors())
             .extracting(error -> error.code())
             .containsExactly("HAVING_REQUIRES_GROUP_BY");
+        assertThat(analyzer.validate(query).errors().get(0).detail())
+            .contains("HAVING");
+    }
+
+    @Test
+    void validatesAggregateNotAllowedInWhere() {
+        Table users = Table.of("users");
+        var userName = users.column("name", String.class);
+
+        Query query = ClickHouseDsl.select(userName)
+            .from(users)
+            .where(count().gt(ClickHouseDsl.param(1L, Long.class)))
+            .build();
+
+        assertThat(analyzer.validate(query).errors())
+            .extracting(error -> error.code())
+            .containsExactly("AGGREGATE_NOT_ALLOWED_IN_WHERE");
+        assertThat(analyzer.validate(query).errors().get(0).clause())
+            .isEqualTo(ValidationClause.WHERE);
+    }
+
+    @Test
+    void validatesAggregateNotAllowedInPrewhere() {
+        Table users = Table.of("users");
+        var userName = users.column("name", String.class);
+
+        Query query = ClickHouseDsl.select(userName)
+            .from(users)
+            .prewhere(count().gt(ClickHouseDsl.param(1L, Long.class)))
+            .build();
+
+        assertThat(analyzer.validate(query).errors())
+            .extracting(error -> error.code())
+            .containsExactly("AGGREGATE_NOT_ALLOWED_IN_PREWHERE");
+        assertThat(analyzer.validate(query).errors().get(0).clause())
+            .isEqualTo(ValidationClause.PREWHERE);
+    }
+
+    @Test
+    void validatesWindowFunctionNotAllowedInWhere() {
+        Table users = Table.of("users");
+        var userName = users.column("name", String.class);
+        var age = users.column("age", Integer.class);
+
+        Query query = ClickHouseDsl.select(userName)
+            .from(users)
+            .where(rowNumber(ClickHouseDsl.window().partitionBy(userName).orderBy(age.desc())).gt(ClickHouseDsl.param(1L, Long.class)))
+            .build();
+
+        assertThat(analyzer.validate(query).errors())
+            .extracting(error -> error.code())
+            .containsExactly("WINDOW_FUNCTION_NOT_ALLOWED_IN_WHERE");
+    }
+
+    @Test
+    void validatesWindowFunctionNotAllowedInPrewhere() {
+        Table users = Table.of("users");
+        var userName = users.column("name", String.class);
+        var age = users.column("age", Integer.class);
+
+        Query query = ClickHouseDsl.select(userName)
+            .from(users)
+            .prewhere(rowNumber(ClickHouseDsl.window().partitionBy(userName).orderBy(age.desc())).gt(ClickHouseDsl.param(1L, Long.class)))
+            .build();
+
+        assertThat(analyzer.validate(query).errors())
+            .extracting(error -> error.code())
+            .containsExactly("WINDOW_FUNCTION_NOT_ALLOWED_IN_PREWHERE");
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -172,6 +244,8 @@ class ClickHouseDslTest {
         assertThat(analyzer.validate(query).errors())
             .extracting(error -> error.code())
             .containsExactly("JOIN_KEY_TYPE_MISMATCH");
+        assertThat(analyzer.validate(query).errors().get(0).detail())
+            .contains("Long", "String");
     }
 
     @Test
@@ -202,6 +276,60 @@ class ClickHouseDslTest {
         assertThat(analyzer.validate(query).errors())
             .extracting(error -> error.code())
             .containsExactly("GROUP_BY_MISMATCH");
+        assertThat(analyzer.validate(query).errors().get(0).message())
+            .contains("GROUP BY");
+    }
+
+    @Test
+    void validatesHavingPlainExpressionMustBeGrouped() {
+        Table users = Table.of("users");
+        var userName = users.column("name", String.class);
+        var country = users.column("country", String.class);
+
+        Query query = ClickHouseDsl.select(country, count())
+            .from(users)
+            .groupBy(country)
+            .having(userName.eq("alice"))
+            .build();
+
+        assertThat(analyzer.validate(query).errors())
+            .extracting(error -> error.code())
+            .containsExactly("HAVING_EXPRESSION_NOT_GROUPED");
+        assertThat(analyzer.validate(query).errors().get(0).detail())
+            .contains("String");
+    }
+
+    @Test
+    void validatesWindowFunctionNotAllowedInHaving() {
+        Table users = Table.of("users");
+        var userName = users.column("name", String.class);
+        var age = users.column("age", Integer.class);
+
+        Query query = ClickHouseDsl.select(userName, count())
+            .from(users)
+            .groupBy(userName)
+            .having(rowNumber(ClickHouseDsl.window().partitionBy(userName).orderBy(age.desc())).gt(ClickHouseDsl.param(1L, Long.class)))
+            .build();
+
+        assertThat(analyzer.validate(query).errors())
+            .extracting(error -> error.code())
+            .containsExactly("WINDOW_FUNCTION_NOT_ALLOWED_IN_HAVING");
+    }
+
+    @Test
+    void validatesWindowFunctionNotAllowedInGroupBy() {
+        Table users = Table.of("users");
+        var userName = users.column("name", String.class);
+        var age = users.column("age", Integer.class);
+
+        Query query = ClickHouseDsl.select(userName)
+            .from(users)
+            .groupBy(rowNumber(ClickHouseDsl.window().partitionBy(userName).orderBy(age.desc())))
+            .build();
+
+        assertThat(analyzer.validate(query).errors())
+            .extracting(error -> error.code())
+            .containsExactly("GROUP_BY_MISMATCH", "WINDOW_FUNCTION_NOT_ALLOWED_IN_GROUP_BY");
     }
 
     @Test
@@ -264,6 +392,8 @@ class ClickHouseDslTest {
         assertThat(analyzer.validate(left).errors())
             .extracting(error -> error.code())
             .containsExactly("UNION_SELECTION_COUNT_MISMATCH");
+        assertThat(analyzer.validate(left).errors().get(0).detail())
+            .contains("Left count", "right count");
     }
 
     @Test
@@ -284,6 +414,8 @@ class ClickHouseDslTest {
         assertThat(analyzer.validate(left).errors())
             .extracting(error -> error.code())
             .containsExactly("UNION_SELECTION_TYPE_MISMATCH");
+        assertThat(analyzer.validate(left).errors().get(0).detail())
+            .contains("Position 0");
     }
 
     @Test
@@ -299,6 +431,110 @@ class ClickHouseDslTest {
         assertThat(analyzer.validate(query).errors())
             .extracting(error -> error.code())
             .containsExactly("ARRAY_JOIN_REQUIRES_ARRAY_TYPE");
+        assertThat(analyzer.validate(query).errors().get(0).clause())
+            .isEqualTo(ValidationClause.ARRAY_JOIN);
+    }
+
+    @Test
+    void validatesDuplicateSettingNames() {
+        Table users = Table.of("users");
+        var userName = users.column("name", String.class);
+
+        Query query = ClickHouseDsl.select(userName)
+            .from(users)
+            .settings(maxThreads(4), io.github.heonny.clickhousedsl.model.Setting.of("max_threads", 8))
+            .build();
+
+        assertThat(analyzer.validate(query).errors())
+            .extracting(error -> error.code())
+            .containsExactly("DUPLICATE_SETTING_NAME");
+        assertThat(analyzer.validate(query).errors().get(0).clause())
+            .isEqualTo(ValidationClause.SETTINGS);
+        assertThat(analyzer.validate(query).errors().get(0).detail())
+            .contains("max_threads");
+    }
+
+    @Test
+    void validateOrThrowReturnsQueryWhenValidationSucceeds() {
+        Table users = Table.of("users");
+        var userName = users.column("name", String.class);
+
+        Query query = ClickHouseDsl.select(userName)
+            .from(users)
+            .build();
+
+        assertThat(ClickHouseDsl.validateOrThrow(query)).isSameAs(query);
+    }
+
+    @Test
+    void validateOrThrowUsesStructuredExceptionMessage() {
+        Table users = Table.of("users");
+        var userName = users.column("name", String.class);
+
+        Query query = ClickHouseDsl.select(userName, count())
+            .from(users)
+            .build();
+
+        assertThatThrownBy(() -> ClickHouseDsl.validateOrThrow(query))
+            .isInstanceOf(io.github.heonny.clickhousedsl.validate.QueryValidationException.class)
+            .hasMessageContaining("GROUP_BY_REQUIRED")
+            .hasMessageContaining("SELECT")
+            .hasMessageContaining("Aggregate and non-aggregate selections");
+    }
+
+    @Test
+    void renderValidatedFailsFastForInvalidQuery() {
+        Table users = Table.of("users");
+        var userName = users.column("name", String.class);
+
+        Query query = ClickHouseDsl.select(userName, count())
+            .from(users)
+            .build();
+
+        assertThatThrownBy(() -> ClickHouseDsl.renderValidated(query))
+            .isInstanceOf(io.github.heonny.clickhousedsl.validate.QueryValidationException.class)
+            .hasMessageContaining("GROUP_BY_REQUIRED");
+    }
+
+    @Test
+    void renderValidatedQueryReturnsSqlAndParametersForValidQuery() {
+        Table users = Table.of("users");
+        var userName = users.column("name", String.class);
+
+        Query query = ClickHouseDsl.select(userName)
+            .from(users)
+            .where(userName.eq("alice"))
+            .build();
+
+        RenderedQuery renderedQuery = ClickHouseDsl.renderValidatedQuery(query);
+
+        assertThat(renderedQuery.sql()).isEqualTo("SELECT `users`.`name` FROM `users` WHERE `users`.`name` = ?");
+        assertThat(renderedQuery.parameters()).containsExactly("alice");
+    }
+
+    @Test
+    void rejectsNullSettingValue() {
+        assertThatThrownBy(() -> io.github.heonny.clickhousedsl.model.Setting.of("max_threads", null))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessageContaining("value");
+    }
+
+    @Test
+    void rejectsNullElementsInVarargDslInputs() {
+        Table users = Table.of("users");
+        var userName = users.column("name", String.class);
+
+        assertThatThrownBy(() -> ClickHouseDsl.select((io.github.heonny.clickhousedsl.model.Expression<?>[]) new io.github.heonny.clickhousedsl.model.Expression<?>[]{userName, null}))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessageContaining("selections");
+
+        assertThatThrownBy(() -> ClickHouseDsl.select(userName).from(users).settings(new io.github.heonny.clickhousedsl.model.Setting[]{null}))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessageContaining("settings");
+
+        assertThatThrownBy(() -> ClickHouseDsl.select(userName).from(users).arrayJoin(new io.github.heonny.clickhousedsl.model.Expression<?>[]{null}))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessageContaining("expressions");
     }
 
     @Test

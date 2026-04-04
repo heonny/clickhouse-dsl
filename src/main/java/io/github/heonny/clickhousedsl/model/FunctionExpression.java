@@ -55,6 +55,15 @@ public final class FunctionExpression<T> implements Expression<T> {
     }
 
     /**
+     * Returns the ordered function arguments.
+     *
+     * @return function arguments
+     */
+    public List<Expression<?>> arguments() {
+        return arguments;
+    }
+
+    /**
      * Convenience factory for vararg arguments.
      *
      * @param name function name
@@ -65,8 +74,12 @@ public final class FunctionExpression<T> implements Expression<T> {
      * @return function expression
      */
     public static <T> FunctionExpression<T> of(String name, Class<T> type, boolean aggregate, Expression<?>... arguments) {
+        Objects.requireNonNull(arguments, "arguments");
         List<Expression<?>> items = new ArrayList<>();
         java.util.Collections.addAll(items, arguments);
+        for (Expression<?> argument : items) {
+            Objects.requireNonNull(argument, "arguments must not contain null");
+        }
         return new FunctionExpression<>(name, items, type, aggregate);
     }
 }

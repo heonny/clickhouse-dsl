@@ -43,7 +43,7 @@ final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.Quer
     private Table pendingJoinTable;
 
     QueryBuilder(Expression<?>... selections) {
-        this.selections = Arrays.asList(selections);
+        this.selections = requireNonNullElements("selections", selections);
         if (this.selections.isEmpty()) {
             throw new IllegalArgumentException("At least one selection is required");
         }
@@ -57,7 +57,7 @@ final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.Quer
 
     @Override
     public ClickHouseDsl.QueryStep with(WithClause... clauses) {
-        withClauses.addAll(Arrays.asList(clauses));
+        withClauses.addAll(requireNonNullElements("clauses", clauses));
         return this;
     }
 
@@ -98,7 +98,7 @@ final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.Quer
 
     @Override
     public ClickHouseDsl.QueryStep arrayJoin(Expression<?>... expressions) {
-        arrayJoins.addAll(Arrays.asList(expressions));
+        arrayJoins.addAll(requireNonNullElements("expressions", expressions));
         return this;
     }
 
@@ -113,7 +113,7 @@ final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.Quer
 
     @Override
     public ClickHouseDsl.GroupedQueryStep groupBy(Expression<?>... expressions) {
-        groupBy.addAll(Arrays.asList(expressions));
+        groupBy.addAll(requireNonNullElements("expressions", expressions));
         return this;
     }
 
@@ -125,7 +125,7 @@ final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.Quer
 
     @Override
     public ClickHouseDsl.QueryStep orderBy(Sort... sorts) {
-        orderBy.addAll(Arrays.asList(sorts));
+        orderBy.addAll(requireNonNullElements("sorts", sorts));
         return this;
     }
 
@@ -140,7 +140,7 @@ final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.Quer
 
     @Override
     public ClickHouseDsl.QueryStep settings(Setting... settings) {
-        this.settings.addAll(Arrays.asList(settings));
+        this.settings.addAll(requireNonNullElements("settings", settings));
         return this;
     }
 
@@ -181,5 +181,14 @@ final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.Quer
             settings,
             setOperations
         );
+    }
+
+    private static <T> List<T> requireNonNullElements(String label, T[] values) {
+        Objects.requireNonNull(values, label);
+        List<T> list = Arrays.asList(values);
+        for (T value : list) {
+            Objects.requireNonNull(value, label + " must not contain null");
+        }
+        return list;
     }
 }

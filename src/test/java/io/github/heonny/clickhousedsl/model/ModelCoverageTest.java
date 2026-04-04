@@ -8,6 +8,8 @@ import io.github.heonny.clickhousedsl.explain.ExplainResult;
 import io.github.heonny.clickhousedsl.explain.ExplainType;
 import io.github.heonny.clickhousedsl.render.ClickHouseRenderer;
 import io.github.heonny.clickhousedsl.validate.ValidationError;
+import io.github.heonny.clickhousedsl.validate.ValidationClause;
+import io.github.heonny.clickhousedsl.validate.ValidationCode;
 import io.github.heonny.clickhousedsl.validate.ValidationResult;
 import org.junit.jupiter.api.Test;
 
@@ -39,6 +41,7 @@ class ModelCoverageTest {
         Table finalized = aliased.finalTable();
         Column<Long> id = finalized.column("id", Long.class);
         ArrayColumn<String> tags = finalized.arrayColumn("tags", String.class);
+        StateColumn<Long> state = finalized.stateColumn("count_state", Long.class);
 
         assertThat(users.name()).isEqualTo(Identifier.of("users"));
         assertThat(users.alias()).isNull();
@@ -50,6 +53,8 @@ class ModelCoverageTest {
         assertThat(tags.type()).isEqualTo((Class<?>) java.util.List.class);
         assertThat(tags.elementType()).isEqualTo(String.class);
         assertThat(tags.render(new RenderContext())).isEqualTo("`u`.`tags`");
+        assertThat(state.valueType()).isEqualTo(Long.class);
+        assertThat(state.render(new RenderContext())).isEqualTo("`u`.`count_state`");
         assertThat(id.asc().direction()).isEqualTo(SortDirection.ASC);
         assertThat(id.desc().direction()).isEqualTo(SortDirection.DESC);
         assertThat(users).isEqualTo(Table.of("users"));
@@ -93,10 +98,39 @@ class ModelCoverageTest {
         LogicalExpression logical = eq.and(gt).or(lt);
 
         assertThat(eq.type()).isEqualTo(Boolean.class);
+        assertThat(eq.left()).isEqualTo(age);
+        assertThat(eq.right()).isInstanceOf(ParameterExpression.class);
         assertThat(eq.render(new RenderContext())).isEqualTo("`u`.`age` = ?");
         assertThat(gt.render(new RenderContext())).isEqualTo("`u`.`age` > `u`.`score`");
         assertThat(logical.type()).isEqualTo(Boolean.class);
+        assertThat(logical.left()).isInstanceOf(LogicalExpression.class);
+        assertThat(logical.right()).isEqualTo(lt);
         assertThat(logical.render(new RenderContext())).isEqualTo("((`u`.`age` = ? AND `u`.`age` > `u`.`score`) OR `u`.`age` < ?)");
+    }
+
+    @Test
+    void expressionDefaultHelpersCoverAliasAndComparisonVariants() {
+        Table users = Table.of("users").as("u");
+        Column<Integer> age = users.column("age", Integer.class);
+        ReferenceExpression<Integer> aliasRef = Expressions.ref("age_alias", Integer.class);
+
+        AliasedExpression<Integer> aliased = age.as("age_alias");
+        ComparisonExpression eq = age.eq(aliasRef);
+        ComparisonExpression gt = age.gt(Expressions.literal(10, Integer.class));
+        ComparisonExpression lt = age.lt(aliasRef);
+        ComparisonExpression gte = age.gte(18);
+        ComparisonExpression lte = age.lte(Expressions.param(65, Integer.class));
+
+        assertThat(aliased.alias()).isEqualTo(Identifier.of("age_alias"));
+        assertThat(aliased.delegate()).isEqualTo(age);
+        assertThat(aliased.type()).isEqualTo(Integer.class);
+        assertThat(aliased.aggregate()).isFalse();
+        assertThat(aliased.render(new RenderContext())).isEqualTo("`u`.`age` AS `age_alias`");
+        assertThat(eq.render(new RenderContext())).isEqualTo("`u`.`age` = `age_alias`");
+        assertThat(gt.render(new RenderContext())).isEqualTo("`u`.`age` > 10");
+        assertThat(lt.render(new RenderContext())).isEqualTo("`u`.`age` < `age_alias`");
+        assertThat(gte.render(new RenderContext())).isEqualTo("`u`.`age` >= ?");
+        assertThat(lte.render(new RenderContext())).isEqualTo("`u`.`age` <= ?");
     }
 
     @Test
@@ -106,6 +140,8 @@ class ModelCoverageTest {
         AggregateExpression<Integer> summed = Expressions.sum(Expressions.param(7, Integer.class));
         AggregateStateExpression<Integer> state = ClickHouseDsl.sumState(Expressions.param(7, Integer.class));
         AggregateExpression<Integer> merged = ClickHouseDsl.sumMerge(state);
+        FunctionExpression<Integer> scalarFunction = Expressions.function("toUInt8", Integer.class, Expressions.param(1, Integer.class));
+        BinaryArithmeticExpression<Double> division = Expressions.divide(Expressions.param(10, Integer.class), Expressions.param(2, Integer.class));
 
         assertThat(count.aggregate()).isTrue();
         assertThat(count.type()).isEqualTo(Long.class);
@@ -120,6 +156,24 @@ class ModelCoverageTest {
         assertThat(merged.aggregate()).isTrue();
         assertThat(merged.type()).isEqualTo(Integer.class);
         assertThat(merged.render(new RenderContext())).isEqualTo("sumMerge(sumState(?))");
+        assertThat(scalarFunction.arguments()).hasSize(1);
+        assertThat(scalarFunction.render(new RenderContext())).isEqualTo("toUInt8(?)");
+        assertThat(division.left()).isInstanceOf(ParameterExpression.class);
+        assertThat(division.right()).isInstanceOf(ParameterExpression.class);
+        assertThat(division.render(new RenderContext())).isEqualTo("? / ?");
+        assertThatThrownBy(() -> FunctionExpression.of("toUInt8", Integer.class, false, new Expression<?>[]{null}))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessageContaining("arguments");
+    }
+
+    @Test
+    void literalExpressionCoversNullStringCharacterBooleanAndNumberRendering() {
+        assertThat(Expressions.literal(null, String.class).render(new RenderContext())).isEqualTo("NULL");
+        assertThat(Expressions.literal("O'Reilly", String.class).render(new RenderContext())).isEqualTo("'O''Reilly'");
+        assertThat(Expressions.literal('\'', Character.class).render(new RenderContext())).isEqualTo("''''");
+        assertThat(Expressions.literal(true, Boolean.class).render(new RenderContext())).isEqualTo("1");
+        assertThat(Expressions.literal(false, Boolean.class).render(new RenderContext())).isEqualTo("0");
+        assertThat(Expressions.literal(42, Integer.class).render(new RenderContext())).isEqualTo("42");
     }
 
     @Test
@@ -148,12 +202,35 @@ class ModelCoverageTest {
     @Test
     void validationPojoObjectsExposeMessagesAndValidity() {
         ValidationResult result = new ValidationResult();
-        result.add("CODE", "message");
+        result.add("CODE", ValidationClause.SELECT, "message", "detail");
         ValidationError error = result.errors().get(0);
 
         assertThat(result.valid()).isFalse();
         assertThat(error.code()).isEqualTo("CODE");
+        assertThat(error.clause()).isEqualTo(ValidationClause.SELECT);
         assertThat(error.message()).isEqualTo("message");
+        assertThat(error.detail()).isEqualTo("detail");
+        assertThat(error.toString()).contains("CODE", "SELECT", "message", "detail");
+    }
+
+    @Test
+    void validationResultSupportsStableCodeAndThrowIfInvalid() {
+        ValidationResult result = new ValidationResult();
+        result.add(ValidationCode.GROUP_BY_REQUIRED, "extra detail");
+
+        assertThat(result.errors()).hasSize(1);
+        assertThat(result.errors().get(0).code()).isEqualTo("GROUP_BY_REQUIRED");
+        assertThat(result.errors().get(0).clause()).isEqualTo(ValidationClause.SELECT);
+        assertThat(result.errors().get(0).message()).contains("GROUP BY");
+        assertThat(result.errors().get(0).detail()).isEqualTo("extra detail");
+        assertThatThrownBy(result::throwIfInvalid)
+            .isInstanceOf(io.github.heonny.clickhousedsl.validate.QueryValidationException.class)
+            .hasMessageContaining("GROUP_BY_REQUIRED");
+        try {
+            result.throwIfInvalid();
+        } catch (io.github.heonny.clickhousedsl.validate.QueryValidationException exception) {
+            assertThat(exception.validationResult()).isSameAs(result);
+        }
     }
 
     @Test
@@ -243,6 +320,12 @@ class ModelCoverageTest {
         assertThat(rowNumber.type()).isEqualTo(Long.class);
         assertThat(rowNumber.windowSpec()).isEqualTo(spec);
         assertThat(rowNumber.render(new RenderContext())).isEqualTo("rowNumber() OVER (PARTITION BY `u`.`name` ORDER BY `u`.`age` DESC)");
+        assertThatThrownBy(() -> ClickHouseDsl.window().partitionBy(new Expression<?>[]{null}))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessageContaining("expressions");
+        assertThatThrownBy(() -> ClickHouseDsl.window().orderBy(new Sort[]{null}))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessageContaining("sorts");
     }
 
     @Test

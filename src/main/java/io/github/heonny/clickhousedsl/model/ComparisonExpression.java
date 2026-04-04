@@ -37,6 +37,24 @@ public final class ComparisonExpression implements Expression<Boolean> {
         return new LogicalExpression(this, LogicalOperator.OR, other);
     }
 
+    /**
+     * Returns the left-hand expression.
+     *
+     * @return left-hand expression
+     */
+    public Expression<?> left() {
+        return left;
+    }
+
+    /**
+     * Returns the right-hand expression.
+     *
+     * @return right-hand expression
+     */
+    public Expression<?> right() {
+        return right;
+    }
+
     @Override
     public Class<Boolean> type() {
         return Boolean.class;

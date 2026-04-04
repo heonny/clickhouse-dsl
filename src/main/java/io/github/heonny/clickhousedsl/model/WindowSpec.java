@@ -34,8 +34,12 @@ public final class WindowSpec {
      * @return updated window spec
      */
     public WindowSpec partitionBy(Expression<?>... expressions) {
+        Objects.requireNonNull(expressions, "expressions");
         List<Expression<?>> next = new ArrayList<>(partitionBy);
         Collections.addAll(next, expressions);
+        for (Expression<?> expression : next) {
+            Objects.requireNonNull(expression, "expressions must not contain null");
+        }
         return new WindowSpec(next, orderBy);
     }
 
@@ -46,8 +50,12 @@ public final class WindowSpec {
      * @return updated window spec
      */
     public WindowSpec orderBy(Sort... sorts) {
+        Objects.requireNonNull(sorts, "sorts");
         List<Sort> next = new ArrayList<>(orderBy);
         Collections.addAll(next, sorts);
+        for (Sort sort : next) {
+            Objects.requireNonNull(sort, "sorts must not contain null");
+        }
         return new WindowSpec(partitionBy, next);
     }
 

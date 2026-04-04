@@ -18,7 +18,7 @@ Gradle:
 
 ```gradle
 dependencies {
-    implementation("io.github.heonny:clickhouse-dsl:0.1.0")
+    implementation("io.github.heonny:clickhouse-dsl:0.1.1")
 }
 ```
 
@@ -28,7 +28,7 @@ Maven:
 <dependency>
     <groupId>io.github.heonny</groupId>
     <artifactId>clickhouse-dsl</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.1</version>
 </dependency>
 ```
 
@@ -98,11 +98,101 @@ GitHub Actions 기준으로는 아래 secrets를 등록하면 된다.
 
 아직 구현하지 않은 것:
 
-- 실제 JDBC / HTTP executor
+- 실제 JDBC / HTTP transport executor
 - ClickHouse 서버 연동 explain fetch
 - benchmark runner
 - 함수 타입 시스템의 전체 커버리지
 - window frame 세부 문법
+
+## Safe Usage
+
+운영 코드에서는 아래 순서를 권장한다.
+
+1. DSL로 `Query`를 만든다.
+2. `validateOrThrow(query)` 또는 `renderValidated*` 경로를 사용한다.
+3. 실패 시 `QueryValidationException`의 `validationResult()`를 읽어 사용자 메시지나 로그를 만든다.
+
+권장 경로:
+
+```java
+Query query = select(userName, count())
+    .from(users)
+    .groupBy(userName)
+    .build();
+
+RenderedQuery rendered = renderValidatedQuery(query);
+```
+
+또는:
+
+```java
+validateOrThrow(query);
+String sql = render(query);
+```
+
+권장하지 않는 경로:
+
+- 외부 입력이 섞인 query를 `render(query)`만 호출하고 바로 실행
+- `ValidationResult`를 무시한 채 analyzer 결과를 버리는 패턴
+- 같은 setting 이름을 여러 번 넣는 패턴
+
+executor 경계에서는 직접 `render(query)`보다 아래 패턴을 권장한다.
+
+```java
+SafeQueryExecutor executor = new SafeQueryExecutor(renderedQuery -> {
+    throw new UnsupportedOperationException("transport not wired yet");
+});
+
+QueryExecutionReport report = executor.execute(query);
+```
+
+이 wrapper는 내부에서 `renderValidatedQuery(query)`를 강제하므로, invalid query가 transport까지 내려가지 않게 한다.
+
+현재 validation이 특히 강하게 보는 항목:
+
+- aggregate와 `GROUP BY` 정합성
+- `WHERE` / `PREWHERE`의 aggregate misuse
+- `HAVING`의 grouping misuse
+- `JOIN` key 타입 mismatch
+- `UNION` shape mismatch
+- duplicate setting 이름
+- `ARRAY JOIN` 타입 misuse
+- window function의 잘못된 clause 사용
+
+## Aggregate State Safety
+
+`AggregateState` 계열은 ClickHouse에서 특히 실수하기 쉬운 구간이다. 이 라이브러리에서는 아래 패턴을 권장한다.
+
+1. rollup/materialized view 테이블에서는 `stateColumn(...)`으로 state 컬럼을 선언
+2. 최종 query에서는 `countMerge`, `countIfMerge`, `uniqMerge`, `sumMerge`로 바로 merge
+3. 운영 경계에서는 `renderValidatedQuery(query)`를 사용
+
+예:
+
+```java
+Table rollup = Table.of("api_rollup");
+
+var endpoint = rollup.column("endpoint", String.class);
+var totalCountState = rollup.stateColumn("total_count_state", Long.class);
+var durationSumState = rollup.stateColumn("duration_sum_state", Integer.class);
+
+Query query = select(
+        endpoint,
+        countMerge(totalCountState).as("totalCount"),
+        sumMerge(durationSumState, Integer.class).as("durationSum")
+    )
+    .from(rollup)
+    .groupBy(endpoint)
+    .build();
+
+RenderedQuery rendered = renderValidatedQuery(query);
+```
+
+권장 이유:
+
+- raw state value를 그대로 노출하는 실수를 줄인다
+- aggregate merge helper가 query 의도를 더 명확하게 만든다
+- validation과 테스트 snapshot을 함께 붙이기 쉽다
 
 ## Design Position
 

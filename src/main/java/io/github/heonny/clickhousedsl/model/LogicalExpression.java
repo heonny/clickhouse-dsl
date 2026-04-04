@@ -37,6 +37,24 @@ public final class LogicalExpression implements Expression<Boolean> {
         return new LogicalExpression(this, LogicalOperator.OR, other);
     }
 
+    /**
+     * Returns the left-hand boolean expression.
+     *
+     * @return left-hand boolean expression
+     */
+    public Expression<Boolean> left() {
+        return left;
+    }
+
+    /**
+     * Returns the right-hand boolean expression.
+     *
+     * @return right-hand boolean expression
+     */
+    public Expression<Boolean> right() {
+        return right;
+    }
+
     @Override
     public Class<Boolean> type() {
         return Boolean.class;
