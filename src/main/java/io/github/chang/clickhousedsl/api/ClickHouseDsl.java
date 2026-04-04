@@ -50,6 +50,10 @@ public final class ClickHouseDsl {
         return Expressions.sumMerge(expression);
     }
 
+    public static <N extends Number> AggregateExpression<N> sumMerge(io.github.chang.clickhousedsl.model.Expression<io.github.chang.clickhousedsl.model.AggregateState<N>> expression, Class<N> valueType) {
+        return Expressions.sumMerge(expression, valueType);
+    }
+
     public static AggregateExpression<Long> countMerge(Expression<io.github.chang.clickhousedsl.model.AggregateState<Long>> expression) {
         return Expressions.countMerge(expression);
     }

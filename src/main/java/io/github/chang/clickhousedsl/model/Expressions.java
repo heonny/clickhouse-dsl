@@ -41,6 +41,10 @@ public final class Expressions {
         return new AggregateExpression<>(context -> "uniqMerge(" + expression.render(context) + ")", Long.class);
     }
 
+    public static <N extends Number> AggregateExpression<N> sumMerge(Expression<AggregateState<N>> expression, Class<N> valueType) {
+        return new AggregateExpression<>(context -> "sumMerge(" + expression.render(context) + ")", valueType);
+    }
+
     public static <T> FunctionExpression<T> function(String name, Class<T> type, Expression<?>... arguments) {
         return FunctionExpression.of(name, type, false, arguments);
     }

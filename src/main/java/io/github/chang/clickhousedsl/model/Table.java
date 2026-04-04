@@ -34,6 +34,10 @@ public final class Table {
         return new ArrayColumn<>(this, Identifier.of(columnName), elementType);
     }
 
+    public <T> StateColumn<T> stateColumn(String columnName, Class<T> valueType) {
+        return new StateColumn<>(this, Identifier.of(columnName), valueType);
+    }
+
     public Identifier name() {
         return name;
     }
