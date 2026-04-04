@@ -3,7 +3,7 @@ plugins {
     id 'jacoco'
 }
 
-group = 'io.github.chang'
+group = 'io.github.heonny'
 version = '0.1.0-SNAPSHOT'
 
 java {

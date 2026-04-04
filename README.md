@@ -18,7 +18,7 @@ Gradle:
 
 ```gradle
 dependencies {
-    implementation("io.github.chang:clickhouse-dsl:0.1.0-SNAPSHOT")
+    implementation("io.github.heonny:clickhouse-dsl:0.1.0-SNAPSHOT")
 }
 ```
 
@@ -26,7 +26,7 @@ Maven:
 
 ```xml
 <dependency>
-    <groupId>io.github.chang</groupId>
+    <groupId>io.github.heonny</groupId>
     <artifactId>clickhouse-dsl</artifactId>
     <version>0.1.0-SNAPSHOT</version>
 </dependency>
@@ -42,7 +42,7 @@ Maven:
 처음 읽는 순서는 이 정도면 충분하다.
 
 1. 아래 `Quick Example`
-2. [`ReadmeExampleTest.java`](./src/test/java/io/github/chang/clickhousedsl/api/ReadmeExampleTest.java)
+2. [`ReadmeExampleTest.java`](./src/test/java/io/github/heonny/clickhousedsl/api/ReadmeExampleTest.java)
 3. `samples/basic`
 4. `samples/advanced`
 5. `samples/realworld`
@@ -106,7 +106,7 @@ Maven:
 ## Quick Example
 
 ```java
-import static io.github.chang.clickhousedsl.api.ClickHouseDsl.*;
+import static io.github.heonny.clickhousedsl.api.ClickHouseDsl.*;
 
 Table users = Table.of("analytics.users").as("u").finalTable();
 Table events = Table.of("analytics.events").as("e");
@@ -122,7 +122,7 @@ Query query = select(
         userName,
         count(),
         rowNumber(window().partitionBy(userName).orderBy(age.desc())),
-        io.github.chang.clickhousedsl.model.Expressions.sum(score)
+        io.github.heonny.clickhousedsl.model.Expressions.sum(score)
             .over(window().partitionBy(userName).orderBy(age.asc()))
     )
     .from(users)
@@ -236,7 +236,7 @@ LIMIT ?
 ### After: clickhouse-dsl
 
 ```java
-import static io.github.chang.clickhousedsl.api.ClickHouseDsl.*;
+import static io.github.heonny.clickhousedsl.api.ClickHouseDsl.*;
 
 Table errors = Table.of("app_errors");
 
@@ -294,11 +294,11 @@ Query query = select(
 | Sort / group references | 문자열 참조 | typed reference expression |
 | Regression testing | raw SQL snapshot만 가능 | DSL + SQL snapshot 둘 다 가능 |
 
-이 예제는 [`SampleAggregationQueriesTest.java`](./src/test/java/io/github/chang/clickhousedsl/samples/basic/SampleAggregationQueriesTest.java) 와 같은 계열의 검증을 위해 쓰는 패턴이다. 즉, DSL이 예쁘게 보이는지만 확인하는 게 아니라, 기존 문자열 SQL과 논리적으로 같은 SQL을 꾸준히 내는지 테스트로 고정한다.
+이 예제는 [`SampleAggregationQueriesTest.java`](./src/test/java/io/github/heonny/clickhousedsl/samples/basic/SampleAggregationQueriesTest.java) 와 같은 계열의 검증을 위해 쓰는 패턴이다. 즉, DSL이 예쁘게 보이는지만 확인하는 게 아니라, 기존 문자열 SQL과 논리적으로 같은 SQL을 꾸준히 내는지 테스트로 고정한다.
 
 ## Sample Cases
 
-복잡한 샘플은 [`src/test/java/io/github/chang/clickhousedsl/samples`](./src/test/java/io/github/chang/clickhousedsl/samples) 아래를 카탈로그처럼 쓴다.
+복잡한 샘플은 [`src/test/java/io/github/heonny/clickhousedsl/samples`](./src/test/java/io/github/heonny/clickhousedsl/samples) 아래를 카탈로그처럼 쓴다.
 
 의도는 두 가지다.
 
@@ -313,7 +313,7 @@ Query query = select(
 
 ### basic
 
-경로: [`src/test/java/io/github/chang/clickhousedsl/samples/basic`](./src/test/java/io/github/chang/clickhousedsl/samples/basic)
+경로: [`src/test/java/io/github/heonny/clickhousedsl/samples/basic`](./src/test/java/io/github/heonny/clickhousedsl/samples/basic)
 
 - `SampleAggregationQueriesTest`
   - 집계 + alias + 함수 중첩
@@ -324,7 +324,7 @@ Query query = select(
 
 ### advanced
 
-경로: [`src/test/java/io/github/chang/clickhousedsl/samples/advanced`](./src/test/java/io/github/chang/clickhousedsl/samples/advanced)
+경로: [`src/test/java/io/github/heonny/clickhousedsl/samples/advanced`](./src/test/java/io/github/heonny/clickhousedsl/samples/advanced)
 
 - `WithUnionSamplesTest`
   - CTE + `UNION ALL`
@@ -341,7 +341,7 @@ Query query = select(
 
 ### realworld
 
-경로: [`src/test/java/io/github/chang/clickhousedsl/samples/realworld`](./src/test/java/io/github/chang/clickhousedsl/samples/realworld)
+경로: [`src/test/java/io/github/heonny/clickhousedsl/samples/realworld`](./src/test/java/io/github/heonny/clickhousedsl/samples/realworld)
 
 - `RefinedCompanyStyleSamplesTest`
   - 실무 쿼리 구조를 정제한 공개용 샘플
