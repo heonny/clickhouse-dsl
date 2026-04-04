@@ -39,6 +39,18 @@ Maven:
 ./gradlew check
 ```
 
+Maven Central 배포용 메타데이터와 signing 스켈레톤은 이미 포함되어 있다.
+
+- `./gradlew publishToMavenLocal`
+- `./gradlew publish`
+
+환경 변수 또는 `gradle.properties`로 아래 값을 주면 된다.
+
+- `MAVEN_CENTRAL_USERNAME`
+- `MAVEN_CENTRAL_PASSWORD`
+- `SIGNING_IN_MEMORY_KEY`
+- `SIGNING_IN_MEMORY_KEY_PASSWORD`
+
 처음 읽는 순서는 이 정도면 충분하다.
 
 1. 아래 `Quick Example`

@@ -1,10 +1,20 @@
 plugins {
     id 'java-library'
     id 'jacoco'
+    id 'maven-publish'
+    id 'signing'
 }
 
 group = 'io.github.heonny'
 version = '0.1.0-SNAPSHOT'
+
+def projectName = 'clickhouse-dsl'
+def projectDescription = 'Java 17 typed Query DSL for ClickHouse with compile-time guardrails and semantic validation.'
+def projectUrl = 'https://github.com/heonny/clickhouse-dsl'
+def scmConnection = 'scm:git:https://github.com/heonny/clickhouse-dsl.git'
+def scmDeveloperConnection = 'scm:git:ssh://git@github.com/heonny/clickhouse-dsl.git'
+def sonatypeReleasesUrl = 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/'
+def sonatypeSnapshotsUrl = 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
 
 java {
     toolchain {
@@ -52,3 +62,60 @@ jacocoTestCoverageVerification {
 }
 
 check.dependsOn tasks.jacocoTestCoverageVerification
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifactId = projectName
+
+            pom {
+                name = projectName
+                description = projectDescription
+                url = projectUrl
+
+                licenses {
+                    license {
+                        name = 'Apache License, Version 2.0'
+                        url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id = 'heonny'
+                        name = 'heonny'
+                    }
+                }
+
+                scm {
+                    url = projectUrl
+                    connection = scmConnection
+                    developerConnection = scmDeveloperConnection
+                }
+            }
+        }
+    }
+
+    repositories {
+        maven {
+            name = 'sonatype'
+            url = uri(version.endsWith('SNAPSHOT') ? sonatypeSnapshotsUrl : sonatypeReleasesUrl)
+
+            credentials {
+                username = findProperty('mavenCentralUsername') ?: System.getenv('MAVEN_CENTRAL_USERNAME')
+                password = findProperty('mavenCentralPassword') ?: System.getenv('MAVEN_CENTRAL_PASSWORD')
+            }
+        }
+    }
+}
+
+signing {
+    def signingKey = findProperty('signingInMemoryKey') ?: System.getenv('SIGNING_IN_MEMORY_KEY')
+    def signingPassword = findProperty('signingInMemoryKeyPassword') ?: System.getenv('SIGNING_IN_MEMORY_KEY_PASSWORD')
+
+    if (signingKey && signingPassword) {
+        useInMemoryPgpKeys(signingKey, signingPassword)
+        sign publishing.publications.mavenJava
+    }
+}
