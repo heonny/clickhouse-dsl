@@ -9,7 +9,7 @@ group = 'io.github.heonny'
 version = '0.1.2'
 
 def projectName = 'clickhouse-dsl'
-def projectDescription = 'Java 17 typed Query DSL for ClickHouse with compile-time guardrails and semantic validation.'
+def projectDescription = 'Java 17+ typed Query DSL for ClickHouse with compile-time guardrails and semantic validation.'
 def projectUrl = 'https://github.com/heonny/clickhouse-dsl'
 def scmConnection = 'scm:git:https://github.com/heonny/clickhouse-dsl.git'
 def scmDeveloperConnection = 'scm:git:ssh://git@github.com/heonny/clickhouse-dsl.git'

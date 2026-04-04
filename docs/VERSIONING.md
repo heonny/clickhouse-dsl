@@ -10,8 +10,8 @@
 - 버전 형식은 `MAJOR.MINOR.PATCH` 를 사용한다.
 - `-SNAPSHOT` 버전은 사용하지 않는다.
 - Git tag는 항상 `v` prefix를 사용한다.
-  - 예: `v0.1.1`
-- Git tag 버전과 [build.gradle](/Users/chang/Documents/workspace/backend/clickhouse-dsl/build.gradle)의 `version` 값은 반드시 같아야 한다.
+  - 예: `v0.1.2`
+- Git tag 버전과 [`../build.gradle`](../build.gradle)의 `version` 값은 반드시 같아야 한다.
 
 ## 증가 기준
 
@@ -31,17 +31,18 @@
 ## 예시
 
 - `0.1.0` 첫 공개 release
-- `0.1.1` bug fix, sample 보강, validation 보강
-- `0.2.0` executor, explain fetch, 더 넓은 함수 타입 시스템 추가
+- `0.1.1` 안정성 및 문서 보강
+- `0.1.2` JDBC fetch 경계, AI guide, README 구조 정리
+- `0.2.0` 더 넓은 ClickHouse 문법과 validation 확장
 - `1.0.0` 공개 API 안정화 선언
 
 ## 릴리즈 흐름
 
-1. 다음 release 버전으로 [build.gradle](/Users/chang/Documents/workspace/backend/clickhouse-dsl/build.gradle)을 올린다.
+1. 다음 release 버전으로 [`../build.gradle`](../build.gradle)을 올린다.
 2. 테스트와 문서를 정리한다.
 3. commit 한다.
 4. `v<version>` tag를 만든다.
 5. `main`과 tag를 push 한다.
 6. GitHub Actions가 Central release 배포를 수행한다.
 
-자세한 실행 순서는 [RELEASE.md](/Users/chang/Documents/workspace/backend/clickhouse-dsl/RELEASE.md)를 따른다.
+자세한 실행 순서는 [`RELEASE.md`](./RELEASE.md)를 따른다.

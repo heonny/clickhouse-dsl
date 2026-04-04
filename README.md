@@ -1,23 +1,27 @@
 # clickhouse-dsl
 
+[English README](./README.en.md)
+
 ![coverage](./docs/badges/coverage.svg)
 ![tests](./docs/badges/tests.svg)
 ![version](./docs/badges/version.svg)
 ![license](./docs/badges/license.svg)
 
-`clickhouse-dsl`은 Java 17에서 ClickHouse 쿼리를 조금 더 안전하고 읽기 쉽게 만들기 위한 typed Query DSL입니다.
+`clickhouse-dsl`은 ClickHouse 쿼리를 Java 코드에서 더 안전하고 읽기 좋게 만들기 위한 typed Query DSL입니다.
 
-이 프로젝트는 직접 DB 실행까지 책임지기보다, Java 코드에서 쿼리를 조립하고 검증한 뒤 안전한 SQL 문자열로 렌더링하는 데 초점을 둡니다.
+현재 산출물은 `Java 17+`를 최소 실행 기준으로 합니다.
 
-- ClickHouse 특화 문법을 Java 코드에서 자연스럽게 표현
-- 가능한 범위의 compile-time guardrail 제공
-- 나머지는 semantic analyzer로 명시적으로 검증
-- POJO 중심, immutable 지향, 경량 구조
-- parameter placeholder 기반 렌더링으로 SQL injection 경로 축소
+이 프로젝트는 직접 DB 실행까지 책임지는 프레임워크보다는, Java 코드에서 쿼리를 조립하고 검증한 뒤 안전한 SQL 문자열로 렌더링하는 데 집중합니다.
+
+- ClickHouse 특화 문법을 Java 코드에서 자연스럽게 표현합니다.
+- 가능한 범위의 실수를 compile-time guardrail로 끌어올립니다.
+- 타입 시스템만으로 막기 어려운 규칙은 semantic analyzer로 검증합니다.
+- POJO 중심, immutable 지향, 경량 구조를 유지합니다.
+- placeholder 기반 렌더링으로 문자열 조립보다 덜 위험한 기본값을 제공합니다.
 
 ## AI Guides
 
-If you want an AI agent to use this repository in a predictable way, start here.
+AI가 이 저장소를 일관된 방식으로 사용하도록 안내하는 문서입니다.
 
 - [`skills/clickhouse-dsl/SKILL.md`](./skills/clickhouse-dsl/SKILL.md)
 - [`docs/ai/CODEX.md`](./docs/ai/CODEX.md)
@@ -25,7 +29,7 @@ If you want an AI agent to use this repository in a predictable way, start here.
 
 ## Getting Started
 
-지금은 Maven Central에 release 배포가 가능한 상태입니다. 바로 dependency로 붙여서 시작할 수 있습니다.
+현재는 Maven Central release 배포 기준으로 바로 사용할 수 있습니다.
 
 Gradle:
 
@@ -45,46 +49,27 @@ Maven:
 </dependency>
 ```
 
-로컬에서 먼저 상태를 확인해보려면:
+로컬에서 먼저 상태를 확인하려면 아래 명령으로 충분합니다.
 
 ```bash
 ./gradlew test
 ./gradlew check
 ```
 
-Maven Central 배포에 필요한 메타데이터와 signing 설정도 이미 프로젝트 안에 들어 있습니다.
+README에는 빠르게 시작하는 데 필요한 내용만 남기고, 심화 문서는 `docs/` 아래로 분리해 두었습니다.
 
-- `./gradlew publishToMavenLocal`
-- `./gradlew releaseToCentral`
+- [`docs/guide.md`](./docs/guide.md)
+- [`docs/VERSIONING.md`](./docs/VERSIONING.md)
+- [`docs/RELEASE.md`](./docs/RELEASE.md)
 
-환경 변수나 `gradle.properties`에는 아래 값이 필요합니다.
+처음 보신다면 아래 순서로 읽는 것을 권장합니다.
 
-- `CENTRAL_PORTAL_TOKEN_USERNAME`
-- `CENTRAL_PORTAL_TOKEN_PASSWORD`
-- `SIGNING_IN_MEMORY_KEY`
-- `SIGNING_IN_MEMORY_KEY_PASSWORD`
-
-현재 build는 release-only publishing 기준으로 맞춰져 있어서, `-SNAPSHOT` 버전은 publish가 실패하도록 막아두었습니다.
-
-GitHub Actions로 배포할 때는 아래 secrets를 등록하면 됩니다.
-
-- `CENTRAL_PORTAL_TOKEN_USERNAME`
-- `CENTRAL_PORTAL_TOKEN_PASSWORD`
-- `SIGNING_IN_MEMORY_KEY`
-- `SIGNING_IN_MEMORY_KEY_PASSWORD`
-
-릴리즈 규칙과 실제 배포 절차는 아래 문서에 정리해두었습니다.
-
-- [`VERSIONING.md`](./VERSIONING.md)
-- [`RELEASE.md`](./RELEASE.md)
-
-처음 보면 이 순서대로 읽는 게 가장 편합니다.
-
-1. 아래 `Quick Example`
+1. 이 README의 `Quick Example`
 2. [`ReadmeExampleTest.java`](./src/test/java/io/github/heonny/clickhousedsl/api/ReadmeExampleTest.java)
-3. `samples/basic`
-4. `samples/advanced`
-5. `samples/realworld`
+3. [`docs/guide.md`](./docs/guide.md)
+4. `samples/basic`
+5. `samples/advanced`
+6. `samples/realworld`
 
 ## Current Scope
 
@@ -105,14 +90,14 @@ GitHub Actions로 배포할 때는 아래 secrets를 등록하면 됩니다.
 - `WITH`
 - `UNION` / `UNION ALL`
 - window function (`rowNumber`, `sum(...).over(...)`)
-- aggregate state helpers (`sumState`, `sumMerge`)
-- `EXPLAIN` query model + raw explain text analyzer
+- aggregate state helper (`sumState`, `sumMerge`)
+- `EXPLAIN` query model과 raw explain text analyzer
 - execution metrics POJO (`maxMemoryUsageBytes`, `usedThreads`)
 
-아직 남아 있는 부분도 있습니다.
+아직 의도적으로 남겨둔 범위도 있습니다.
 
-- 실제 ClickHouse 서버와 붙는 transport 고도화
-- ClickHouse 서버 연동 explain fetch
+- 실제 ClickHouse transport 고도화
+- 서버 연동 explain fetch
 - benchmark runner
 - 함수 타입 시스템의 전체 커버리지
 - window frame 세부 문법
@@ -121,11 +106,11 @@ GitHub Actions로 배포할 때는 아래 secrets를 등록하면 됩니다.
 
 운영 코드에서는 아래 흐름을 권장합니다.
 
-1. DSL로 `Query`를 만든다.
-2. `validateOrThrow(query)` 또는 `renderValidated*` 경로를 사용한다.
-3. 실패 시 `QueryValidationException`의 `validationResult()`를 읽어 사용자 메시지나 로그를 만든다.
+1. DSL로 `Query`를 만듭니다.
+2. `validateOrThrow(query)` 또는 `renderValidated*` 경로를 사용합니다.
+3. 렌더링된 SQL과 파라미터를 기존 실행 계층으로 넘깁니다.
 
-가장 무난한 경로는 이렇습니다.
+가장 무난한 사용 방식은 아래와 같습니다.
 
 ```java
 Query query = select(userName, count())
@@ -133,12 +118,6 @@ Query query = select(userName, count())
     .groupBy(userName)
     .build();
 
-RenderedQuery rendered = renderValidatedQuery(query);
-```
-
-그리고 이렇게 기존 실행 도구에 붙이면 됩니다.
-
-```java
 RenderedQuery rendered = renderValidatedQuery(query);
 
 jdbcTemplate.query(
@@ -151,68 +130,10 @@ jdbcTemplate.query(
 반대로 아래 패턴은 피하는 편이 좋습니다.
 
 - 외부 입력이 섞인 query를 `render(query)`만 호출하고 바로 실행하는 패턴
-- `ValidationResult`를 무시한 채 analyzer 결과를 버리는 패턴
+- `ValidationResult`를 무시하는 패턴
 - 같은 setting 이름을 여러 번 넣는 패턴
 
-실행은 이 라이브러리 안에서 끝까지 끌고 가기보다, 이미 쓰고 있는 `JdbcTemplate`, MyBatis, 혹은 사내 실행 계층에 넘기는 편을 권장합니다.
-
-```java
-RenderedQuery rendered = renderValidatedQuery(query);
-```
-
-프로젝트 안에 있는 executor 관련 코드는 보조적인 skeleton 성격에 가깝고, 현재 이 라이브러리의 중심 기능은 아닙니다.
-
-현재 validation이 특히 신경 쓰는 항목은 다음과 같습니다.
-
-- aggregate와 `GROUP BY` 정합성
-- `WHERE` / `PREWHERE`의 aggregate misuse
-- `HAVING`의 grouping misuse
-- `JOIN` key 타입 mismatch
-- `UNION` shape mismatch
-- duplicate setting 이름
-- `ARRAY JOIN` 타입 misuse
-- window function의 잘못된 clause 사용
-
-## Aggregate State Safety
-
-`AggregateState` 계열은 ClickHouse에서 실수하기 쉬운 구간이라, 아래처럼 쓰는 것을 권장합니다.
-
-1. rollup/materialized view 테이블에서는 `stateColumn(...)`으로 state 컬럼을 선언
-2. 최종 query에서는 `countMerge`, `countIfMerge`, `uniqMerge`, `sumMerge`로 바로 merge
-3. 마지막에는 `renderValidatedQuery(query)`로 SQL과 파라미터를 뽑아 기존 실행 도구에 넘김
-
-예:
-
-```java
-Table rollup = Table.of("api_rollup");
-
-var endpoint = rollup.column("endpoint", String.class);
-var totalCountState = rollup.stateColumn("total_count_state", Long.class);
-var durationSumState = rollup.stateColumn("duration_sum_state", Integer.class);
-
-Query query = select(
-        endpoint,
-        countMerge(totalCountState).as("totalCount"),
-        sumMerge(durationSumState, Integer.class).as("durationSum")
-    )
-    .from(rollup)
-    .groupBy(endpoint)
-    .build();
-
-RenderedQuery rendered = renderValidatedQuery(query);
-```
-
-이렇게 두는 이유는 단순합니다.
-
-- raw state value를 그대로 노출하는 실수를 줄인다
-- aggregate merge helper가 query 의도를 더 명확하게 만든다
-- validation과 테스트 snapshot을 함께 붙이기 쉽다
-
-## Design Position
-
-이 라이브러리는 범용 SQL DSL이나 ORM을 목표로 하지 않습니다.
-
-`범용 DSL보다 ClickHouse에 더 충실하고, 문자열 SQL보다 더 안전한 typed middle layer`
+현재 이 라이브러리의 중심 기능은 실행기보다 `typed DSL + validation + SQL rendering`입니다. 실제 실행은 `JdbcTemplate`, MyBatis, 또는 기존 사내 실행 계층에 맡기는 편을 권장합니다.
 
 ## Why Not JPA / JdbcTemplate / MyBatis
 
@@ -220,16 +141,16 @@ RenderedQuery rendered = renderValidatedQuery(query);
 
 | Approach | 장점 | 한계 |
 |--------|------|------|
-| JPA / Criteria | 엔티티 중심 CRUD에는 익숙하다 | ClickHouse 문법 충실도가 낮고, 분석 쿼리나 특화 함수 표현이 어색하다 |
-| JdbcTemplate + string SQL | 가장 직접적이고 빠르다 | 컴파일 안정성이 없고, 동적 조건이 늘수록 문자열 조립이 급격히 나빠진다 |
-| MyBatis XML / `@NativeQuery` | SQL 자체는 명시적이라 익숙하다 | 복잡한 동적 쿼리는 XML/문자열 분기 관리가 어렵고, IDE 차원의 구조 검증이 약하다 |
-| `clickhouse-dsl` | ClickHouse 문법을 유지하면서 compile guardrail, 테스트 스냅샷, 동적쿼리 조립성을 같이 챙긴다 | 실행 자체는 `JdbcTemplate` 같은 기존 도구와 조합해서 쓰는 쪽이 더 자연스럽다 |
+| JPA / Criteria | 엔티티 중심 CRUD에는 익숙합니다 | ClickHouse 문법 충실도가 낮고 분석 쿼리 표현이 어색합니다 |
+| JdbcTemplate + string SQL | 가장 직접적이고 빠릅니다 | 컴파일 안정성이 없고 동적 조건이 늘수록 문자열 조립이 빠르게 무너집니다 |
+| MyBatis XML / `@NativeQuery` | SQL 자체는 명시적이라 익숙합니다 | 복잡한 동적 쿼리는 XML과 문자열 분기가 빠르게 지저분해집니다 |
+| `clickhouse-dsl` | ClickHouse 문법을 유지하면서 guardrail, 테스트, 동적 조합성을 함께 챙길 수 있습니다 | 실행은 기존 도구와 조합해서 쓰는 편이 더 자연스럽습니다 |
 
-특히 아래 세 가지를 중요하게 보고 있습니다.
+특히 아래 세 가지를 중요하게 봅니다.
 
-- `컴파일 안정성`: 가능한 범위의 쿼리 실수를 컴파일 단계로 끌어올린다
-- `테스트 용이성`: DSL 객체와 렌더링 SQL을 둘 다 snapshot처럼 고정할 수 있다
-- `동적쿼리 유연성`: `JdbcTemplate`나 annotation 기반 native query에서 지저분해지는 조건 조합을 POJO 조립으로 가져온다
+- `컴파일 안정성`: 가능한 범위의 실수를 컴파일 단계로 끌어올립니다.
+- `테스트 용이성`: DSL 객체와 렌더링 SQL을 함께 고정할 수 있습니다.
+- `동적쿼리 유연성`: 조건 조합이 복잡해질수록 문자열보다 POJO 조립이 훨씬 안정적입니다.
 
 ## Quick Example
 
@@ -264,10 +185,10 @@ Query query = select(
     .settings(maxThreads(4), maxMemoryUsage(268_435_456L), useUncompressedCache(true))
     .build();
 
-String sql = render(query);
+RenderedQuery rendered = renderValidatedQuery(query);
 ```
 
-렌더링 결과:
+렌더링 결과는 아래와 같습니다.
 
 ```sql
 SELECT `u`.`name`, count(), rowNumber() OVER (PARTITION BY `u`.`name` ORDER BY `u`.`age` DESC), sum(`u`.`score`) OVER (PARTITION BY `u`.`name` ORDER BY `u`.`age` ASC)
@@ -282,242 +203,33 @@ LIMIT ?
 SETTINGS `max_threads` = ?, `max_memory_usage` = ?, `use_uncompressed_cache` = ?
 ```
 
-메모리/스레드 제어는 지금 바로 DSL에서 줄 수 있다.
+메모리와 스레드 제어도 DSL에서 바로 줄 수 있습니다.
 
 - `maxThreads(int)`
 - `maxMemoryUsage(long bytes)`
 - `useUncompressedCache(boolean)`
 
-실제로 사용된 최대 메모리값은 renderer만으로는 알 수 없다. 이 값은 ClickHouse 실행 응답이나 query log를 읽는 executor가 있어야 채울 수 있다. 그래서 현재는 future executor가 채울 수 있도록 `ExecutionMetrics` / `QueryExecutionReport` POJO만 먼저 제공한다.
+실제로 사용된 최대 메모리값은 renderer만으로는 알 수 없습니다. 이 값은 ClickHouse 실행 응답이나 query log를 읽는 계층이 있어야 채울 수 있어서, 현재는 `ExecutionMetrics`와 `QueryExecutionReport` POJO만 제공합니다.
 
-## WITH / UNION Example
+## More Examples
 
-```java
-Query activeUsers = select(Table.of("raw_users").column("name", String.class))
-    .from(Table.of("raw_users"))
-    .where(Table.of("raw_users").column("name", String.class).eq("alice"))
-    .build();
+`WITH`, `UNION`, window function, aggregate state, `EXPLAIN`, 실전형 샘플은 README보다 [`docs/guide.md`](./docs/guide.md)와 `samples/*` 테스트에서 보는 편이 더 좋습니다.
 
-Query archivedUsers = select(Table.of("archived_users").column("name", String.class))
-    .from(Table.of("archived_users"))
-    .build();
+대표적으로 아래를 참고하시면 됩니다.
 
-Query merged = select(Table.of("active_users").column("name", String.class))
-    .with(with("active_users", activeUsers))
-    .from(Table.of("active_users"))
-    .unionAll(archivedUsers)
-    .build();
-```
-
-## Explain Example
-
-```java
-ExplainQuery explainQuery = explain(ExplainType.PLAN, query);
-String explainSql = render(explainQuery);
-
-ExplainResult result = analyze(
-    ExplainType.PLAN,
-    """
-    ReadFromStorage
-    Prewhere
-    Filter
-    Join
-    Aggregating
-    Sorting
-    """
-);
-```
-
-분석 결과에서는 이런 힌트를 얻을 수 있다.
-
-- storage read 여부
-- filter / prewhere 여부
-- join stage 여부
-- aggregation 여부
-- sorting 여부
-
-## Before / After
-
-실제 현업 쿼리와 비슷한 복잡도의 예제를, 공개용 샘플 형태로 치장하면 이런 그림이 된다.
-
-### Before: string SQL
-
-```sql
-SELECT count() AS count,
-       toUInt8(0) AS isOther,
-       event_message AS message
-FROM app_errors
-WHERE app_id = ?
-  AND event_time >= toDateTime64(?, 3, 'UTC')
-  AND event_time < toDateTime64(addDays(toDate(?), 1), 3, 'UTC')
-GROUP BY message
-ORDER BY count DESC, message ASC
-LIMIT ?
-```
-
-문제는 익숙하다.
-
-- alias, function nesting, date wrapper가 길어질수록 오타가 늘어난다
-- refactor해도 IDE가 쿼리 구조를 잘 이해하지 못한다
-- 재사용하려고 문자열 조각을 나누면 더 읽기 어려워진다
-
-### After: clickhouse-dsl
-
-```java
-import static io.github.heonny.clickhousedsl.api.ClickHouseDsl.*;
-
-Table errors = Table.of("app_errors");
-
-var appId = errors.column("app_id", Long.class);
-var eventTime = errors.column("event_time", Long.class);
-var eventMessage = errors.column("event_message", String.class);
-
-Query query = select(
-        count().as("count"),
-        function("toUInt8", Integer.class, literal(0, Integer.class)).as("isOther"),
-        eventMessage.as("message")
-    )
-    .from(errors)
-    .where(
-        appId.eq(param(100L, Long.class))
-            .and(eventTime.gte(
-                function(
-                    "toDateTime64",
-                    Long.class,
-                    param("2026-04-01T00:00:00", String.class),
-                    literal(3, Integer.class),
-                    literal("UTC", String.class)
-                )
-            ))
-            .and(eventTime.lt(
-                function(
-                    "toDateTime64",
-                    Long.class,
-                    function(
-                        "addDays",
-                        String.class,
-                        function("toDate", String.class, param("2026-04-02", String.class)),
-                        literal(1, Integer.class)
-                    ),
-                    literal(3, Integer.class),
-                    literal("UTC", String.class)
-                )
-            ))
-    )
-    .groupBy(ref("message", String.class))
-    .orderBy(ref("count", Long.class).desc(), ref("message", String.class).asc())
-    .limit(50)
-    .build();
-```
-
-### Compare
-
-같은 구조를 더 명시적으로 보여준다.
-
-| Concern | String SQL | clickhouse-dsl |
-|--------|------------|----------------|
-| Alias consistency | 사람이 맞춘다 | expression 단위로 alias 고정 |
-| Nested function readability | 괄호를 눈으로 센다 | expression 트리로 조립 |
-| Parameter placement | 순서를 사람이 기억 | renderer가 placeholder 순서 보존 |
-| Sort / group references | 문자열 참조 | typed reference expression |
-| Regression testing | raw SQL snapshot만 가능 | DSL + SQL snapshot 둘 다 가능 |
-
-이 예제는 [`SampleAggregationQueriesTest.java`](./src/test/java/io/github/heonny/clickhousedsl/samples/basic/SampleAggregationQueriesTest.java) 와 같은 계열의 검증을 위해 쓰는 패턴이다. 즉, DSL이 예쁘게 보이는지만 확인하는 게 아니라, 기존 문자열 SQL과 논리적으로 같은 SQL을 꾸준히 내는지 테스트로 고정한다.
-
-## Sample Cases
-
-복잡한 샘플은 [`src/test/java/io/github/heonny/clickhousedsl/samples`](./src/test/java/io/github/heonny/clickhousedsl/samples) 아래를 카탈로그처럼 쓴다.
-
-의도는 두 가지다.
-
-1. README 대표 예제는 대비형으로 짧고 선명하게 유지
-2. 실제 복잡도에 가까운 조회/집계 케이스는 샘플 테스트로 축적
-
-샘플 작성 원칙:
-
-- 회사 쿼리에서 구조만 차용하고 이름은 전부 중립화
-- 절대 경로, 사내 스키마, 내부 서비스명 금지
-- “동일 SQL 렌더링” 또는 “동일한 논리 구조”를 테스트로 고정
-
-### basic
-
-경로: [`src/test/java/io/github/heonny/clickhousedsl/samples/basic`](./src/test/java/io/github/heonny/clickhousedsl/samples/basic)
-
-- `SampleAggregationQueriesTest`
-  - 집계 + alias + 함수 중첩
-  - README before/after와 연결되는 공개용 샘플
-- `DynamicQuerySamplesTest`
-  - 조건 유무에 따라 where/order/limit이 달라지는 동적 조회 샘플
-  - annotation 기반 native query에서 특히 지저분해지는 케이스를 의도
-
-### advanced
-
-경로: [`src/test/java/io/github/heonny/clickhousedsl/samples/advanced`](./src/test/java/io/github/heonny/clickhousedsl/samples/advanced)
-
-- `WithUnionSamplesTest`
-  - CTE + `UNION ALL`
-  - `WITH aggregated AS ...` 류 구조를 DSL에서 어떻게 읽히게 만들지 보여주는 샘플
-- `WindowFunctionSamplesTest`
-  - `rowNumber()` 와 running total window
-  - 분석/랭킹 계열 조회에서 window function 표현력을 보여주는 샘플
-- `AggregateStateSamplesTest`
-  - `countMerge`, `countIfMerge`, `uniqMerge`, `sumMerge`
-  - ClickHouse rollup/state table을 다루는 실무형 샘플
-- `ExplainSamplesTest`
-  - `EXPLAIN PLAN` 렌더링 + raw explain text 분석
-  - 쿼리 생성 이후 진단까지 이어지는 흐름을 보여주는 샘플
-
-### realworld
-
-경로: [`src/test/java/io/github/heonny/clickhousedsl/samples/realworld`](./src/test/java/io/github/heonny/clickhousedsl/samples/realworld)
-
-- `RefinedCompanyStyleSamplesTest`
-  - 실무 쿼리 구조를 정제한 공개용 샘플
-  - `WITH aggregated`, `WITH filtered`, state merge, 동적 필터, 정렬/페이지네이션이 한 번에 들어간다
-
-추천 읽기 순서:
-
-1. `SampleAggregationQueriesTest`
-   - 가장 짧다. 이 프로젝트가 무엇을 하려는지 바로 보인다.
-2. `DynamicQuerySamplesTest`
-   - 왜 `JdbcTemplate` / `@NativeQuery` 대비 동적쿼리 유연성이 중요한지 보인다.
-3. `WithUnionSamplesTest`
-   - 쿼리 구조가 커졌을 때도 POJO 조립이 유지되는지 본다.
-4. `WindowFunctionSamplesTest`
-   - ClickHouse 분석 쿼리 표현력을 확인한다.
-5. `AggregateStateSamplesTest`
-   - rollup/state 테이블 계열 실무 쿼리 감각을 본다.
-6. `RefinedCompanyStyleSamplesTest`
-   - 실제 회사 쿼리 복잡도를 정제해서 가져온 샘플로, “실전형 구조”를 본다.
-7. `ExplainSamplesTest`
-   - 생성 후 진단 흐름까지 연결한다.
-
-## Validation Philosophy
-
-compile-time으로 최대한 잡되, 과장하지 않는다.
-
-현재 방향:
-
-- DSL 단계 순서 제약
-- join key 타입 mismatch의 많은 경우
-- aggregate / group-by 일부 가드
-- `ARRAY JOIN` 입력 타입 검증
-- `UNION` 컬럼 수 / 타입 위치 검증
-
-semantic analyzer가 맡는 것:
-
-- 복잡한 aggregate legality
-- alias scope
-- ClickHouse 함수 타입 규칙의 나머지
-- 더 깊은 semantic edge case
+- [`src/test/java/io/github/heonny/clickhousedsl/samples/basic`](./src/test/java/io/github/heonny/clickhousedsl/samples/basic)
+- [`src/test/java/io/github/heonny/clickhousedsl/samples/advanced`](./src/test/java/io/github/heonny/clickhousedsl/samples/advanced)
+- [`src/test/java/io/github/heonny/clickhousedsl/samples/realworld`](./src/test/java/io/github/heonny/clickhousedsl/samples/realworld)
 
 ## Security
 
-- identifier는 안전한 패턴만 허용
-- 값은 placeholder `?` 로 렌더링
-- raw SQL fragment API는 아직 제공하지 않음
+기본 원칙은 단순합니다.
 
-이건 완전한 보안 보장이 아니라, 문자열 조립보다 훨씬 덜 위험한 기본값을 주는 방향이다.
+- identifier는 안전한 패턴만 허용합니다.
+- 값은 placeholder `?`로 렌더링합니다.
+- raw SQL fragment API는 아직 제공하지 않습니다.
+
+완전한 보안 프레임워크를 목표로 하지는 않지만, 문자열 조립보다 훨씬 덜 위험한 기본값을 제공하는 방향을 유지합니다.
 
 ## Development
 
@@ -526,16 +238,8 @@ semantic analyzer가 맡는 것:
 ./gradlew check
 ```
 
-## Next Real Check
+실전 적용 전 검증 순서와 릴리즈 절차는 아래 문서를 참고해 주세요.
 
-이 라이브러리는 결국 실제 프로젝트에 붙여봐야 한다.
-
-권장 순서:
-
-1. 기존 실서비스/배치 프로젝트에서 대표 ClickHouse 쿼리 3~5개를 고른다
-2. 같은 쿼리를 `clickhouse-dsl`로 재작성한다
-3. 렌더링 SQL이 기존 SQL과 논리적으로 동일한지 비교한다
-4. 실제 ClickHouse에서 결과 row set과 성능 특성을 비교한다
-5. 차이가 나면 DSL, renderer, analyzer 중 어디가 틀렸는지 수정한다
-
-이 단계가 지나야 이 프로젝트가 장난감이 아니라 실제 라이브러리가 된다.
+- [`docs/guide.md`](./docs/guide.md)
+- [`docs/VERSIONING.md`](./docs/VERSIONING.md)
+- [`docs/RELEASE.md`](./docs/RELEASE.md)

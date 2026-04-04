@@ -11,7 +11,7 @@
   - `CENTRAL_PORTAL_TOKEN_PASSWORD`
   - `SIGNING_IN_MEMORY_KEY`
   - `SIGNING_IN_MEMORY_KEY_PASSWORD`
-- [build.gradle](/Users/chang/Documents/workspace/backend/clickhouse-dsl/build.gradle)의 `version` 값이 release 버전으로 설정되어 있음
+- [`../build.gradle`](../build.gradle)의 `version` 값이 release 버전으로 설정되어 있음
 - 작업 트리가 정리되어 있음
 
 ## 릴리즈 전 점검
@@ -30,27 +30,27 @@
 
 ## 릴리즈 절차
 
-예시 버전이 `0.1.1` 인 경우:
+예시 버전이 `0.1.2` 인 경우:
 
 ```bash
 git checkout main
 git pull --ff-only origin main
 ```
 
-[build.gradle](/Users/chang/Documents/workspace/backend/clickhouse-dsl/build.gradle)의 버전을 `0.1.1`로 올린 뒤:
+[`../build.gradle`](../build.gradle)의 버전을 `0.1.2`로 올린 뒤:
 
 ```bash
 ./gradlew clean check
-git add build.gradle README.md VERSIONING.md RELEASE.md
-git commit -m "release: prepare 0.1.1"
-git tag v0.1.1
+git add build.gradle README.md README.en.md docs
+git commit -m "release: prepare 0.1.2"
+git tag v0.1.2
 git push origin main
-git push origin v0.1.1
+git push origin v0.1.2
 ```
 
 ## GitHub Actions 동작
 
-- [release.yml](/Users/chang/Documents/workspace/backend/clickhouse-dsl/.github/workflows/release.yml)은 `v*` tag push를 감지한다.
+- [`../.github/workflows/release.yml`](../.github/workflows/release.yml)은 `v*` tag push를 감지한다.
 - workflow는 아래 순서로 동작한다.
   1. JDK 17 설정
   2. tag 버전과 project 버전 일치 여부 검증
