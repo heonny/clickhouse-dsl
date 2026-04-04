@@ -60,6 +60,11 @@ GitHub Actions 기준으로는 아래 secrets를 등록하면 된다.
 - `SIGNING_IN_MEMORY_KEY`
 - `SIGNING_IN_MEMORY_KEY_PASSWORD`
 
+릴리즈 규칙과 실제 배포 절차는 아래 문서를 보면 된다.
+
+- [VERSIONING.md](/Users/chang/Documents/workspace/backend/clickhouse-dsl/VERSIONING.md)
+- [RELEASE.md](/Users/chang/Documents/workspace/backend/clickhouse-dsl/RELEASE.md)
+
 처음 읽는 순서는 이 정도면 충분하다.
 
 1. 아래 `Quick Example`
