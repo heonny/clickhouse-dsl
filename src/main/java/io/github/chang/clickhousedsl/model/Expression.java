@@ -9,4 +9,8 @@ public interface Expression<T> {
     default boolean aggregate() {
         return false;
     }
+
+    default AliasedExpression<T> as(String alias) {
+        return new AliasedExpression<>(this, Identifier.of(alias));
+    }
 }

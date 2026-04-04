@@ -5,18 +5,47 @@ import io.github.chang.clickhousedsl.model.Join;
 import io.github.chang.clickhousedsl.model.Query;
 import io.github.chang.clickhousedsl.model.RenderContext;
 import io.github.chang.clickhousedsl.model.RenderedQuery;
+import io.github.chang.clickhousedsl.model.SetOperation;
 import io.github.chang.clickhousedsl.model.Setting;
 import io.github.chang.clickhousedsl.model.Sort;
+import io.github.chang.clickhousedsl.model.WithClause;
 import java.util.Iterator;
 
 public final class ClickHouseRenderer {
 
     public RenderedQuery render(Query query) {
         RenderContext context = new RenderContext();
-        StringBuilder sql = new StringBuilder("SELECT ");
+        StringBuilder sql = new StringBuilder();
+        renderQuery(sql, query, context);
+        return new RenderedQuery(sql.toString(), context.parameters());
+    }
+
+    private void renderQuery(StringBuilder sql, Query query, RenderContext context) {
+        if (!query.withClauses().isEmpty()) {
+            sql.append("WITH ");
+            Iterator<WithClause> iterator = query.withClauses().iterator();
+            while (iterator.hasNext()) {
+                WithClause withClause = iterator.next();
+                sql.append(withClause.alias().sql()).append(" AS (");
+                renderQueryBody(sql, withClause.query(), context);
+                sql.append(")");
+                if (iterator.hasNext()) {
+                    sql.append(", ");
+                }
+            }
+            sql.append(' ');
+        }
+        renderQueryBody(sql, query, context);
+        for (SetOperation setOperation : query.setOperations()) {
+            sql.append(' ').append(setOperation.type().sql()).append(' ');
+            renderQueryBody(sql, setOperation.query(), context);
+        }
+    }
+
+    private void renderQueryBody(StringBuilder sql, Query query, RenderContext context) {
+        sql.append("SELECT ");
         appendExpressions(sql, query.selections(), context);
         sql.append(" FROM ").append(query.from().renderFromClause());
-
         for (Join join : query.joins()) {
             sql.append(' ')
                 .append(join.type().sql())
@@ -73,7 +102,6 @@ public final class ClickHouseRenderer {
                 }
             }
         }
-        return new RenderedQuery(sql.toString(), context.parameters());
     }
 
     private void appendExpressions(StringBuilder builder, Iterable<? extends Expression<?>> expressions, RenderContext context) {

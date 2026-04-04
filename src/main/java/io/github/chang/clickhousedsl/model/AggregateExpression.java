@@ -1,14 +1,19 @@
 package io.github.chang.clickhousedsl.model;
 
 import java.util.Objects;
+import java.util.function.Function;
 
 public final class AggregateExpression<T> implements Expression<T> {
 
-    private final String sql;
+    private final Function<RenderContext, String> renderer;
     private final Class<T> type;
 
     AggregateExpression(String sql, Class<T> type) {
-        this.sql = Objects.requireNonNull(sql, "sql");
+        this(context -> sql, type);
+    }
+
+    AggregateExpression(Function<RenderContext, String> renderer, Class<T> type) {
+        this.renderer = Objects.requireNonNull(renderer, "renderer");
         this.type = Objects.requireNonNull(type, "type");
     }
 
@@ -19,7 +24,7 @@ public final class AggregateExpression<T> implements Expression<T> {
 
     @Override
     public String render(RenderContext context) {
-        return sql;
+        return renderer.apply(context);
     }
 
     @Override
@@ -33,5 +38,9 @@ public final class AggregateExpression<T> implements Expression<T> {
 
     public ComparisonExpression gt(Expression<T> other) {
         return new ComparisonExpression(this, ComparisonOperator.GT, other);
+    }
+
+    public WindowFunctionExpression<T> over(WindowSpec windowSpec) {
+        return new WindowFunctionExpression<>(this::render, windowSpec, type);
     }
 }

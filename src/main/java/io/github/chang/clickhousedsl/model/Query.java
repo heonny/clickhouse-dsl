@@ -8,6 +8,7 @@ import java.util.Objects;
 public final class Query {
 
     private final List<Expression<?>> selections;
+    private final List<WithClause> withClauses;
     private final Table from;
     private final List<Join> joins;
     private final List<Expression<?>> arrayJoins;
@@ -19,9 +20,11 @@ public final class Query {
     private final List<Sort> orderBy;
     private final Integer limit;
     private final List<Setting> settings;
+    private final List<SetOperation> setOperations;
 
     public Query(
         List<Expression<?>> selections,
+        List<WithClause> withClauses,
         Table from,
         List<Join> joins,
         List<Expression<?>> arrayJoins,
@@ -32,9 +35,11 @@ public final class Query {
         Expression<Boolean> having,
         List<Sort> orderBy,
         Integer limit,
-        List<Setting> settings
+        List<Setting> settings,
+        List<SetOperation> setOperations
     ) {
         this.selections = Collections.unmodifiableList(new ArrayList<>(Objects.requireNonNull(selections, "selections")));
+        this.withClauses = Collections.unmodifiableList(new ArrayList<>(Objects.requireNonNull(withClauses, "withClauses")));
         this.from = Objects.requireNonNull(from, "from");
         this.joins = Collections.unmodifiableList(new ArrayList<>(Objects.requireNonNull(joins, "joins")));
         this.arrayJoins = Collections.unmodifiableList(new ArrayList<>(Objects.requireNonNull(arrayJoins, "arrayJoins")));
@@ -46,10 +51,15 @@ public final class Query {
         this.orderBy = Collections.unmodifiableList(new ArrayList<>(Objects.requireNonNull(orderBy, "orderBy")));
         this.limit = limit;
         this.settings = Collections.unmodifiableList(new ArrayList<>(Objects.requireNonNull(settings, "settings")));
+        this.setOperations = Collections.unmodifiableList(new ArrayList<>(Objects.requireNonNull(setOperations, "setOperations")));
     }
 
     public List<Expression<?>> selections() {
         return selections;
+    }
+
+    public List<WithClause> withClauses() {
+        return withClauses;
     }
 
     public Table from() {
@@ -94,5 +104,9 @@ public final class Query {
 
     public List<Setting> settings() {
         return settings;
+    }
+
+    public List<SetOperation> setOperations() {
+        return setOperations;
     }
 }

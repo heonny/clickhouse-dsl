@@ -2,10 +2,12 @@ package io.github.chang.clickhousedsl.api;
 
 import static io.github.chang.clickhousedsl.api.ClickHouseDsl.count;
 import static io.github.chang.clickhousedsl.api.ClickHouseDsl.maxThreads;
+import static io.github.chang.clickhousedsl.api.ClickHouseDsl.rowNumber;
 import static io.github.chang.clickhousedsl.api.ClickHouseDsl.useUncompressedCache;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.chang.clickhousedsl.explain.ExplainType;
 import io.github.chang.clickhousedsl.model.Join;
 import io.github.chang.clickhousedsl.model.JoinType;
 import io.github.chang.clickhousedsl.model.Query;
@@ -110,6 +112,7 @@ class ClickHouseDslTest {
 
         Query query = new Query(
             java.util.List.of(count()),
+            java.util.List.of(),
             users,
             java.util.List.of(),
             java.util.List.of(),
@@ -120,6 +123,7 @@ class ClickHouseDslTest {
             age.gt(10),
             java.util.List.of(),
             null,
+            java.util.List.of(),
             java.util.List.of()
         );
 
@@ -138,6 +142,7 @@ class ClickHouseDslTest {
 
         Query query = new Query(
             java.util.List.of(userId),
+            java.util.List.of(),
             users,
             java.util.List.of(new Join(JoinType.INNER, events, (io.github.chang.clickhousedsl.model.Expression) userId, (io.github.chang.clickhousedsl.model.Expression) eventCode)),
             java.util.List.of(),
@@ -148,6 +153,7 @@ class ClickHouseDslTest {
             null,
             java.util.List.of(),
             null,
+            java.util.List.of(),
             java.util.List.of()
         );
 
@@ -191,5 +197,136 @@ class ClickHouseDslTest {
         assertThatThrownBy(() -> new QueryBuilder(new io.github.chang.clickhousedsl.model.Expression<?>[0]))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("At least one selection");
+    }
+
+    @Test
+    void rendersWithAndUnionAllQueriesInOrder() {
+        Table rawUsers = Table.of("raw_users");
+        Table users = Table.of("active_users");
+        Table archivedUsers = Table.of("archived_users");
+        var rawName = rawUsers.column("name", String.class);
+        var activeName = users.column("name", String.class);
+        var archivedName = archivedUsers.column("name", String.class);
+
+        Query cte = ClickHouseDsl.select(rawName)
+            .from(rawUsers)
+            .where(rawName.eq("alice"))
+            .build();
+
+        Query archivedQuery = ClickHouseDsl.select(archivedName)
+            .from(archivedUsers)
+            .where(archivedName.eq("bob"))
+            .build();
+
+        Query query = ClickHouseDsl.select(activeName)
+            .with(ClickHouseDsl.with("active_users", cte))
+            .from(users)
+            .unionAll(archivedQuery)
+            .build();
+
+        RenderedQuery rendered = renderer.render(query);
+
+        assertThat(rendered.sql()).isEqualTo(
+            "WITH `active_users` AS (SELECT `raw_users`.`name` FROM `raw_users` WHERE `raw_users`.`name` = ?) " +
+                "SELECT `active_users`.`name` FROM `active_users` UNION ALL " +
+                "SELECT `archived_users`.`name` FROM `archived_users` WHERE `archived_users`.`name` = ?"
+        );
+        assertThat(rendered.parameters()).containsExactly("alice", "bob");
+    }
+
+    @Test
+    void validatesUnionSelectionCountMismatch() {
+        Table users = Table.of("users");
+        var userName = users.column("name", String.class);
+        var userAge = users.column("age", Integer.class);
+
+        Query right = ClickHouseDsl.select(userName, userAge)
+            .from(users)
+            .build();
+
+        Query left = ClickHouseDsl.select(userName)
+            .from(users)
+            .union(right)
+            .build();
+
+        assertThat(analyzer.validate(left).errors())
+            .extracting(error -> error.code())
+            .containsExactly("UNION_SELECTION_COUNT_MISMATCH");
+    }
+
+    @Test
+    void validatesUnionSelectionTypeMismatch() {
+        Table users = Table.of("users");
+        var userName = users.column("name", String.class);
+        var userAge = users.column("age", Integer.class);
+
+        Query right = ClickHouseDsl.select(userAge)
+            .from(users)
+            .build();
+
+        Query left = ClickHouseDsl.select(userName)
+            .from(users)
+            .union(right)
+            .build();
+
+        assertThat(analyzer.validate(left).errors())
+            .extracting(error -> error.code())
+            .containsExactly("UNION_SELECTION_TYPE_MISMATCH");
+    }
+
+    @Test
+    void validatesArrayJoinRequiresArrayTypedExpression() {
+        Table users = Table.of("users");
+        var userName = users.column("name", String.class);
+
+        Query query = ClickHouseDsl.select(userName)
+            .from(users)
+            .arrayJoin(userName)
+            .build();
+
+        assertThat(analyzer.validate(query).errors())
+            .extracting(error -> error.code())
+            .containsExactly("ARRAY_JOIN_REQUIRES_ARRAY_TYPE");
+    }
+
+    @Test
+    void rendersWindowFunctionsWithPartitionAndOrder() {
+        Table users = Table.of("users").as("u");
+        var userName = users.column("name", String.class);
+        var age = users.column("age", Integer.class);
+        var score = users.column("score", Integer.class);
+
+        Query query = ClickHouseDsl.select(
+                userName,
+                rowNumber(ClickHouseDsl.window().partitionBy(userName).orderBy(age.desc())),
+                io.github.chang.clickhousedsl.model.Expressions.sum(score).over(ClickHouseDsl.window().partitionBy(userName).orderBy(age.asc()))
+            )
+            .from(users)
+            .build();
+
+        RenderedQuery rendered = renderer.render(query);
+
+        assertThat(rendered.sql()).isEqualTo(
+            "SELECT `u`.`name`, rowNumber() OVER (PARTITION BY `u`.`name` ORDER BY `u`.`age` DESC), " +
+                "sum(`u`.`score`) OVER (PARTITION BY `u`.`name` ORDER BY `u`.`age` ASC) FROM `users` AS `u`"
+        );
+        assertThat(rendered.parameters()).isEmpty();
+    }
+
+    @Test
+    void rendersExplainPlanForQuery() {
+        Table users = Table.of("users");
+        var userName = users.column("name", String.class);
+
+        Query query = ClickHouseDsl.select(userName)
+            .from(users)
+            .where(userName.eq("alice"))
+            .build();
+
+        String explainSql = ClickHouseDsl.render(ClickHouseDsl.explain(ExplainType.PLAN, query));
+
+        assertThat(explainSql).isEqualTo(
+            "EXPLAIN PLAN SELECT `users`.`name` FROM `users` WHERE `users`.`name` = ?"
+        );
     }
 }

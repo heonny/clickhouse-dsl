@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.chang.clickhousedsl.api.ClickHouseDsl;
+import io.github.chang.clickhousedsl.explain.ExplainResult;
+import io.github.chang.clickhousedsl.explain.ExplainType;
 import io.github.chang.clickhousedsl.render.ClickHouseRenderer;
 import io.github.chang.clickhousedsl.validate.ValidationError;
 import io.github.chang.clickhousedsl.validate.ValidationResult;
@@ -36,6 +38,7 @@ class ModelCoverageTest {
         Table aliased = users.as("u");
         Table finalized = aliased.finalTable();
         Column<Long> id = finalized.column("id", Long.class);
+        ArrayColumn<String> tags = finalized.arrayColumn("tags", String.class);
 
         assertThat(users.name()).isEqualTo(Identifier.of("users"));
         assertThat(users.alias()).isNull();
@@ -44,6 +47,9 @@ class ModelCoverageTest {
         assertThat(finalized.renderFromClause()).isEqualTo("`users` FINAL AS `u`");
         assertThat(id.type()).isEqualTo(Long.class);
         assertThat(id.render(new RenderContext())).isEqualTo("`u`.`id`");
+        assertThat(tags.type()).isEqualTo((Class<?>) java.util.List.class);
+        assertThat(tags.elementType()).isEqualTo(String.class);
+        assertThat(tags.render(new RenderContext())).isEqualTo("`u`.`tags`");
         assertThat(id.asc().direction()).isEqualTo(SortDirection.ASC);
         assertThat(id.desc().direction()).isEqualTo(SortDirection.DESC);
         assertThat(users).isEqualTo(Table.of("users"));
@@ -92,6 +98,8 @@ class ModelCoverageTest {
         AggregateExpression<Long> count = ClickHouseDsl.count();
         Expression<Long> parameter = ClickHouseDsl.param(3L, Long.class);
         AggregateExpression<Integer> summed = Expressions.sum(Expressions.param(7, Integer.class));
+        AggregateStateExpression<Integer> state = ClickHouseDsl.sumState(Expressions.param(7, Integer.class));
+        AggregateExpression<Integer> merged = ClickHouseDsl.sumMerge(state);
 
         assertThat(count.aggregate()).isTrue();
         assertThat(count.type()).isEqualTo(Long.class);
@@ -100,6 +108,12 @@ class ModelCoverageTest {
         assertThat(summed.aggregate()).isTrue();
         assertThat(summed.type()).isEqualTo(Integer.class);
         assertThat(summed.render(new RenderContext())).startsWith("sum(");
+        assertThat(state.aggregate()).isTrue();
+        assertThat(state.valueType()).isEqualTo(Integer.class);
+        assertThat(state.render(new RenderContext())).isEqualTo("sumState(?)");
+        assertThat(merged.aggregate()).isTrue();
+        assertThat(merged.type()).isEqualTo(Integer.class);
+        assertThat(merged.render(new RenderContext())).isEqualTo("sumMerge(sumState(?))");
     }
 
     @Test
@@ -143,6 +157,7 @@ class ModelCoverageTest {
         Join join = new Join(JoinType.LEFT, events, userId, userId);
         Query query = new Query(
             java.util.List.of(userId),
+            java.util.List.of(),
             users,
             java.util.List.of(join),
             java.util.List.of(userId),
@@ -153,7 +168,8 @@ class ModelCoverageTest {
             userId.eq(3L),
             java.util.List.of(userId.asc()),
             5,
-            java.util.List.of(Setting.of("max_threads", 2))
+            java.util.List.of(Setting.of("max_threads", 2)),
+            java.util.List.of()
         );
 
         assertThat(join.type()).isEqualTo(JoinType.LEFT);
@@ -161,6 +177,7 @@ class ModelCoverageTest {
         assertThat(join.leftKey()).isEqualTo(userId);
         assertThat(join.rightKey()).isEqualTo(userId);
         assertThat(query.selections()).hasSize(1);
+        assertThat(query.withClauses()).isEmpty();
         assertThat(query.from()).isEqualTo(users);
         assertThat(query.joins()).hasSize(1);
         assertThat(query.arrayJoins()).hasSize(1);
@@ -172,8 +189,75 @@ class ModelCoverageTest {
         assertThat(query.orderBy()).hasSize(1);
         assertThat(query.limit()).isEqualTo(5);
         assertThat(query.settings()).hasSize(1);
+        assertThat(query.setOperations()).isEmpty();
         assertThat(Setting.of("max_threads", 2).name()).isEqualTo(Identifier.of("max_threads"));
         assertThat(Setting.of("max_threads", 2).value()).isEqualTo(2);
+    }
+
+    @Test
+    void withClauseAndSetOperationExposeState() {
+        Table users = Table.of("users");
+        Column<String> name = users.column("name", String.class);
+        Query subQuery = ClickHouseDsl.select(name).from(users).build();
+        WithClause withClause = WithClause.of("user_view", subQuery);
+        SetOperation setOperation = new SetOperation(UnionType.ALL, subQuery);
+
+        assertThat(withClause.alias()).isEqualTo(Identifier.of("user_view"));
+        assertThat(withClause.query()).isEqualTo(subQuery);
+        assertThat(setOperation.type()).isEqualTo(UnionType.ALL);
+        assertThat(setOperation.query()).isEqualTo(subQuery);
+        assertThat(UnionType.DISTINCT.sql()).isEqualTo("UNION");
+        assertThat(UnionType.ALL.sql()).isEqualTo("UNION ALL");
+    }
+
+    @Test
+    void windowSpecAndWindowFunctionExposeState() {
+        Table users = Table.of("users").as("u");
+        Column<String> name = users.column("name", String.class);
+        Column<Integer> age = users.column("age", Integer.class);
+
+        WindowSpec spec = ClickHouseDsl.window().partitionBy(name).orderBy(age.desc());
+        WindowFunctionExpression<Long> rowNumber = ClickHouseDsl.rowNumber(spec);
+
+        assertThat(spec.partitionBy()).containsExactly(name);
+        assertThat(spec.orderBy()).hasSize(1);
+        assertThat(spec.render(new RenderContext())).isEqualTo("PARTITION BY `u`.`name` ORDER BY `u`.`age` DESC");
+        assertThat(rowNumber.type()).isEqualTo(Long.class);
+        assertThat(rowNumber.windowSpec()).isEqualTo(spec);
+        assertThat(rowNumber.render(new RenderContext())).isEqualTo("rowNumber() OVER (PARTITION BY `u`.`name` ORDER BY `u`.`age` DESC)");
+    }
+
+    @Test
+    void explainModelsAndAnalyzerExposeState() {
+        Table users = Table.of("users");
+        Column<String> name = users.column("name", String.class);
+        Query query = ClickHouseDsl.select(name).from(users).build();
+
+        var explainQuery = ClickHouseDsl.explain(ExplainType.PIPELINE, query);
+        ExplainResult result = ClickHouseDsl.analyze(
+            ExplainType.PLAN,
+            """
+            ReadFromStorage
+            Prewhere
+            Filter
+            Join
+            Aggregating
+            Sorting
+            """
+        );
+
+        assertThat(explainQuery.type()).isEqualTo(ExplainType.PIPELINE);
+        assertThat(explainQuery.query()).isEqualTo(query);
+        assertThat(ExplainType.AST.sql()).isEqualTo("AST");
+        assertThat(result.type()).isEqualTo(ExplainType.PLAN);
+        assertThat(result.raw()).contains("ReadFromStorage");
+        assertThat(result.summary().readsFromStorage()).isTrue();
+        assertThat(result.summary().hasFilter()).isTrue();
+        assertThat(result.summary().hasPrewhere()).isTrue();
+        assertThat(result.summary().hasJoin()).isTrue();
+        assertThat(result.summary().hasAggregation()).isTrue();
+        assertThat(result.summary().hasSorting()).isTrue();
+        assertThat(result.summary().notes()).isNotEmpty();
     }
 
     @Test

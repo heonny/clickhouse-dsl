@@ -4,9 +4,12 @@ import io.github.chang.clickhousedsl.model.Expression;
 import io.github.chang.clickhousedsl.model.Join;
 import io.github.chang.clickhousedsl.model.JoinType;
 import io.github.chang.clickhousedsl.model.Query;
+import io.github.chang.clickhousedsl.model.SetOperation;
 import io.github.chang.clickhousedsl.model.Setting;
 import io.github.chang.clickhousedsl.model.Sort;
 import io.github.chang.clickhousedsl.model.Table;
+import io.github.chang.clickhousedsl.model.UnionType;
+import io.github.chang.clickhousedsl.model.WithClause;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -15,11 +18,13 @@ import java.util.Objects;
 final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.QueryStep, ClickHouseDsl.GroupedQueryStep, ClickHouseDsl.JoinOnStep {
 
     private final List<Expression<?>> selections;
+    private final List<WithClause> withClauses = new ArrayList<>();
     private final List<Join> joins = new ArrayList<>();
     private final List<Expression<?>> arrayJoins = new ArrayList<>();
     private final List<Expression<?>> groupBy = new ArrayList<>();
     private final List<Sort> orderBy = new ArrayList<>();
     private final List<Setting> settings = new ArrayList<>();
+    private final List<SetOperation> setOperations = new ArrayList<>();
 
     private Table from;
     private Double sampleRatio;
@@ -40,6 +45,12 @@ final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.Quer
     @Override
     public ClickHouseDsl.QueryStep from(Table table) {
         this.from = Objects.requireNonNull(table, "table");
+        return this;
+    }
+
+    @Override
+    public ClickHouseDsl.QueryStep with(WithClause... clauses) {
+        withClauses.addAll(Arrays.asList(clauses));
         return this;
     }
 
@@ -126,6 +137,18 @@ final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.Quer
     }
 
     @Override
+    public ClickHouseDsl.QueryStep union(Query query) {
+        setOperations.add(new SetOperation(UnionType.DISTINCT, Objects.requireNonNull(query, "query")));
+        return this;
+    }
+
+    @Override
+    public ClickHouseDsl.QueryStep unionAll(Query query) {
+        setOperations.add(new SetOperation(UnionType.ALL, Objects.requireNonNull(query, "query")));
+        return this;
+    }
+
+    @Override
     public Query build() {
         if (from == null) {
             throw new IllegalStateException("FROM is required");
@@ -135,6 +158,7 @@ final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.Quer
         }
         return new Query(
             selections,
+            withClauses,
             from,
             joins,
             arrayJoins,
@@ -145,7 +169,8 @@ final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.Quer
             having,
             orderBy,
             limit,
-            settings
+            settings,
+            setOperations
         );
     }
 }

@@ -1,15 +1,12 @@
 package io.github.chang.clickhousedsl.model;
 
-public enum ComparisonOperator {
-    EQ("="),
-    GT(">"),
-    LT("<"),
-    GTE(">="),
-    LTE("<=");
+public enum UnionType {
+    DISTINCT("UNION"),
+    ALL("UNION ALL");
 
     private final String sql;
 
-    ComparisonOperator(String sql) {
+    UnionType(String sql) {
         this.sql = sql;
     }
 

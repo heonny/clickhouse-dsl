@@ -30,6 +30,10 @@ public final class Table {
         return new Column<>(this, Identifier.of(columnName), type);
     }
 
+    public <E> ArrayColumn<E> arrayColumn(String columnName, Class<E> elementType) {
+        return new ArrayColumn<>(this, Identifier.of(columnName), elementType);
+    }
+
     public Identifier name() {
         return name;
     }

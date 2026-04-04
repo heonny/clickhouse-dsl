@@ -2,7 +2,7 @@ package io.github.chang.clickhousedsl.model;
 
 import java.util.Objects;
 
-public final class Column<T> implements Expression<T> {
+public class Column<T> implements Expression<T> {
 
     private final Table table;
     private final Identifier name;
@@ -46,6 +46,22 @@ public final class Column<T> implements Expression<T> {
 
     public ComparisonExpression lt(Expression<T> other) {
         return new ComparisonExpression(this, ComparisonOperator.LT, other);
+    }
+
+    public ComparisonExpression gte(T value) {
+        return gte(Expressions.param(value, type));
+    }
+
+    public ComparisonExpression gte(Expression<T> other) {
+        return new ComparisonExpression(this, ComparisonOperator.GTE, other);
+    }
+
+    public ComparisonExpression lte(T value) {
+        return lte(Expressions.param(value, type));
+    }
+
+    public ComparisonExpression lte(Expression<T> other) {
+        return new ComparisonExpression(this, ComparisonOperator.LTE, other);
     }
 
     public Sort asc() {
