@@ -3,6 +3,11 @@ package io.github.heonny.clickhousedsl.model;
 import java.util.Objects;
 import java.util.function.Function;
 
+/**
+ * Expression representing {@code <function> OVER (...)}.
+ *
+ * @param <T> result type
+ */
 public final class WindowFunctionExpression<T> implements Expression<T> {
 
     private final Function<RenderContext, String> baseRenderer;
@@ -20,6 +25,11 @@ public final class WindowFunctionExpression<T> implements Expression<T> {
         return type;
     }
 
+    /**
+     * Returns the window specification used for rendering.
+     *
+     * @return window spec
+     */
     public WindowSpec windowSpec() {
         return windowSpec;
     }

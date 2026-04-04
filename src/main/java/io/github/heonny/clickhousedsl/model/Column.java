@@ -2,6 +2,11 @@ package io.github.heonny.clickhousedsl.model;
 
 import java.util.Objects;
 
+/**
+ * Typed table column reference.
+ *
+ * @param <T> column value type
+ */
 public class Column<T> implements Expression<T> {
 
     private final Table table;
@@ -64,10 +69,20 @@ public class Column<T> implements Expression<T> {
         return new ComparisonExpression(this, ComparisonOperator.LTE, other);
     }
 
+    /**
+     * Creates an ascending sort on this column.
+     *
+     * @return ascending sort descriptor
+     */
     public Sort asc() {
         return new Sort(this, SortDirection.ASC);
     }
 
+    /**
+     * Creates a descending sort on this column.
+     *
+     * @return descending sort descriptor
+     */
     public Sort desc() {
         return new Sort(this, SortDirection.DESC);
     }

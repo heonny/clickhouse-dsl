@@ -2,6 +2,9 @@ package io.github.heonny.clickhousedsl.model;
 
 import java.util.Objects;
 
+/**
+ * Boolean comparison between two expressions.
+ */
 public final class ComparisonExpression implements Expression<Boolean> {
 
     private final Expression<?> left;
@@ -14,10 +17,22 @@ public final class ComparisonExpression implements Expression<Boolean> {
         this.right = Objects.requireNonNull(right, "right");
     }
 
+    /**
+     * Combines this comparison with another boolean expression using {@code AND}.
+     *
+     * @param other right-hand boolean expression
+     * @return logical expression
+     */
     public LogicalExpression and(Expression<Boolean> other) {
         return new LogicalExpression(this, LogicalOperator.AND, other);
     }
 
+    /**
+     * Combines this comparison with another boolean expression using {@code OR}.
+     *
+     * @param other right-hand boolean expression
+     * @return logical expression
+     */
     public LogicalExpression or(Expression<Boolean> other) {
         return new LogicalExpression(this, LogicalOperator.OR, other);
     }

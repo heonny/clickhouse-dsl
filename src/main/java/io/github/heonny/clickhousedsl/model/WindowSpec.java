@@ -5,6 +5,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Immutable window specification used by window functions.
+ */
 public final class WindowSpec {
 
     private final List<Expression<?>> partitionBy;
@@ -15,30 +18,63 @@ public final class WindowSpec {
         this.orderBy = Collections.unmodifiableList(new ArrayList<>(Objects.requireNonNull(orderBy, "orderBy")));
     }
 
+    /**
+     * Creates an empty window specification.
+     *
+     * @return empty spec
+     */
     public static WindowSpec empty() {
         return new WindowSpec(List.of(), List.of());
     }
 
+    /**
+     * Returns a copy with additional partition expressions.
+     *
+     * @param expressions partition expressions
+     * @return updated window spec
+     */
     public WindowSpec partitionBy(Expression<?>... expressions) {
         List<Expression<?>> next = new ArrayList<>(partitionBy);
         Collections.addAll(next, expressions);
         return new WindowSpec(next, orderBy);
     }
 
+    /**
+     * Returns a copy with additional sort expressions.
+     *
+     * @param sorts sort descriptors
+     * @return updated window spec
+     */
     public WindowSpec orderBy(Sort... sorts) {
         List<Sort> next = new ArrayList<>(orderBy);
         Collections.addAll(next, sorts);
         return new WindowSpec(partitionBy, next);
     }
 
+    /**
+     * Returns the partition expressions used by the window.
+     *
+     * @return window partitions
+     */
     public List<Expression<?>> partitionBy() {
         return partitionBy;
     }
 
+    /**
+     * Returns the order-by descriptors used by the window.
+     *
+     * @return window ordering
+     */
     public List<Sort> orderBy() {
         return orderBy;
     }
 
+    /**
+     * Renders the window specification body without the {@code OVER} keyword.
+     *
+     * @param context render context
+     * @return rendered window specification
+     */
     public String render(RenderContext context) {
         StringBuilder builder = new StringBuilder();
         if (!partitionBy.isEmpty()) {

@@ -2,6 +2,9 @@ package io.github.heonny.clickhousedsl.model;
 
 import java.util.Objects;
 
+/**
+ * Boolean composition of two boolean expressions.
+ */
 public final class LogicalExpression implements Expression<Boolean> {
 
     private final Expression<Boolean> left;
@@ -14,10 +17,22 @@ public final class LogicalExpression implements Expression<Boolean> {
         this.right = Objects.requireNonNull(right, "right");
     }
 
+    /**
+     * Combines this expression with another boolean expression using {@code AND}.
+     *
+     * @param other right-hand boolean expression
+     * @return logical expression
+     */
     public LogicalExpression and(Expression<Boolean> other) {
         return new LogicalExpression(this, LogicalOperator.AND, other);
     }
 
+    /**
+     * Combines this expression with another boolean expression using {@code OR}.
+     *
+     * @param other right-hand boolean expression
+     * @return logical expression
+     */
     public LogicalExpression or(Expression<Boolean> other) {
         return new LogicalExpression(this, LogicalOperator.OR, other);
     }
@@ -29,6 +44,7 @@ public final class LogicalExpression implements Expression<Boolean> {
 
     @Override
     public String render(RenderContext context) {
+        // Parentheses preserve explicit boolean grouping across nested compositions.
         return "(" + left.render(context) + " " + operator.name() + " " + right.render(context) + ")";
     }
 }

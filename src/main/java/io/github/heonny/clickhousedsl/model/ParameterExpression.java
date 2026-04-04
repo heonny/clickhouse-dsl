@@ -2,6 +2,11 @@ package io.github.heonny.clickhousedsl.model;
 
 import java.util.Objects;
 
+/**
+ * Placeholder-backed runtime parameter.
+ *
+ * @param <T> parameter type
+ */
 public final class ParameterExpression<T> implements Expression<T> {
 
     private final T value;
@@ -12,6 +17,11 @@ public final class ParameterExpression<T> implements Expression<T> {
         this.type = Objects.requireNonNull(type, "type");
     }
 
+    /**
+     * Returns the stored runtime value.
+     *
+     * @return parameter value
+     */
     public T value() {
         return value;
     }

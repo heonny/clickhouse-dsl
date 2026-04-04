@@ -2,6 +2,11 @@ package io.github.heonny.clickhousedsl.model;
 
 import java.util.Objects;
 
+/**
+ * Binary arithmetic expression such as division between two expressions.
+ *
+ * @param <T> result type
+ */
 public final class BinaryArithmeticExpression<T> implements Expression<T> {
 
     private final Expression<?> left;
@@ -10,6 +15,15 @@ public final class BinaryArithmeticExpression<T> implements Expression<T> {
     private final Class<T> type;
     private final boolean aggregate;
 
+    /**
+     * Creates a binary arithmetic expression.
+     *
+     * @param left left operand
+     * @param operator SQL operator
+     * @param right right operand
+     * @param type result type
+     * @param aggregate whether either side is aggregate-aware
+     */
     public BinaryArithmeticExpression(Expression<?> left, String operator, Expression<?> right, Class<T> type, boolean aggregate) {
         this.left = Objects.requireNonNull(left, "left");
         this.operator = Objects.requireNonNull(operator, "operator");

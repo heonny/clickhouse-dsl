@@ -11,8 +11,21 @@ import io.github.heonny.clickhousedsl.model.Sort;
 import io.github.heonny.clickhousedsl.model.WithClause;
 import java.util.Iterator;
 
+/**
+ * Renders immutable query objects into ClickHouse SQL plus positional parameters.
+ *
+ * <p>The renderer walks the query in SQL clause order and delegates expression rendering to each
+ * node. Placeholder values are accumulated in {@link RenderContext} so SQL text and parameter order
+ * stay aligned.
+ */
 public final class ClickHouseRenderer {
 
+    /**
+     * Renders a query into a SQL string and ordered parameter list.
+     *
+     * @param query query to render
+     * @return rendered SQL plus bound parameters
+     */
     public RenderedQuery render(Query query) {
         RenderContext context = new RenderContext();
         StringBuilder sql = new StringBuilder();
@@ -35,6 +48,8 @@ public final class ClickHouseRenderer {
             }
             sql.append(' ');
         }
+
+        // The primary query body is rendered before any UNION / UNION ALL branches.
         renderQueryBody(sql, query, context);
         for (SetOperation setOperation : query.setOperations()) {
             sql.append(' ').append(setOperation.type().sql()).append(' ');
@@ -96,6 +111,8 @@ public final class ClickHouseRenderer {
             Iterator<Setting> iterator = query.settings().iterator();
             while (iterator.hasNext()) {
                 Setting setting = iterator.next();
+                // Settings are rendered as placeholders too so operational values follow the same
+                // binding path as regular query parameters.
                 sql.append(setting.name().sql()).append(" = ").append(context.addParameter(setting.value()));
                 if (iterator.hasNext()) {
                     sql.append(", ");

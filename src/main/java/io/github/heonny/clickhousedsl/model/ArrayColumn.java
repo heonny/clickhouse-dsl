@@ -2,6 +2,11 @@ package io.github.heonny.clickhousedsl.model;
 
 import java.util.List;
 
+/**
+ * Column subtype used for ClickHouse array-typed columns.
+ *
+ * @param <E> element type stored inside the array
+ */
 public final class ArrayColumn<E> extends Column<List<E>> {
 
     private final Class<E> elementType;
@@ -11,6 +16,11 @@ public final class ArrayColumn<E> extends Column<List<E>> {
         this.elementType = elementType;
     }
 
+    /**
+     * Returns the array element type declared by the caller.
+     *
+     * @return element type
+     */
     public Class<E> elementType() {
         return elementType;
     }

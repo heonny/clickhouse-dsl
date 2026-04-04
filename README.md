@@ -42,14 +42,16 @@ Maven:
 Maven Central 배포용 메타데이터와 signing 스켈레톤은 이미 포함되어 있다.
 
 - `./gradlew publishToMavenLocal`
-- `./gradlew publish`
+- `./gradlew releaseToCentral`
 
 환경 변수 또는 `gradle.properties`로 아래 값을 주면 된다.
 
-- `MAVEN_CENTRAL_USERNAME`
-- `MAVEN_CENTRAL_PASSWORD`
+- `CENTRAL_PORTAL_TOKEN_USERNAME`
+- `CENTRAL_PORTAL_TOKEN_PASSWORD`
 - `SIGNING_IN_MEMORY_KEY`
 - `SIGNING_IN_MEMORY_KEY_PASSWORD`
+
+현재 build는 release-only publishing 기준으로 맞춰져 있다. 즉, `-SNAPSHOT` 버전으로는 publish가 실패하도록 막아뒀다.
 
 처음 읽는 순서는 이 정도면 충분하다.
 

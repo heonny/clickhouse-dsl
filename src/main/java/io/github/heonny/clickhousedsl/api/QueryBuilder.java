@@ -15,6 +15,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Mutable implementation behind the step-based public DSL.
+ *
+ * <p>The builder intentionally keeps state local until {@link #build()} is called. At that point
+ * it materializes an immutable {@link Query}. This class is package-private so callers are forced
+ * to go through {@link ClickHouseDsl}.
+ */
 final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.QueryStep, ClickHouseDsl.GroupedQueryStep, ClickHouseDsl.JoinOnStep {
 
     private final List<Expression<?>> selections;
@@ -82,6 +89,7 @@ final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.Quer
 
     @Override
     public <T> ClickHouseDsl.QueryStep on(Expression<T> left, Expression<T> right) {
+        // JOIN is stored only when both the join kind and target table were declared first.
         joins.add(new Join(pendingJoinType, pendingJoinTable, left, right));
         pendingJoinType = null;
         pendingJoinTable = null;
@@ -153,6 +161,7 @@ final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.Quer
         if (from == null) {
             throw new IllegalStateException("FROM is required");
         }
+        // A dangling JOIN without ON is a partially built query and must fail fast here.
         if (pendingJoinType != null || pendingJoinTable != null) {
             throw new IllegalStateException("Join must be completed with ON");
         }

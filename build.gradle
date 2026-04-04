@@ -13,8 +13,9 @@ def projectDescription = 'Java 17 typed Query DSL for ClickHouse with compile-ti
 def projectUrl = 'https://github.com/heonny/clickhouse-dsl'
 def scmConnection = 'scm:git:https://github.com/heonny/clickhouse-dsl.git'
 def scmDeveloperConnection = 'scm:git:ssh://git@github.com/heonny/clickhouse-dsl.git'
-def sonatypeReleasesUrl = 'https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/'
-def sonatypeSnapshotsUrl = 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
+def centralNamespace = 'io.github.heonny'
+def centralStagingDeployUrl = 'https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/'
+def centralManualUploadUrl = "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/${centralNamespace}?publishing_type=automatic"
 
 java {
     toolchain {
@@ -63,6 +64,17 @@ jacocoTestCoverageVerification {
 
 check.dependsOn tasks.jacocoTestCoverageVerification
 
+def portalTokenUsername = providers.gradleProperty('centralPortalTokenUsername')
+    .orElse(providers.environmentVariable('CENTRAL_PORTAL_TOKEN_USERNAME'))
+def portalTokenPassword = providers.gradleProperty('centralPortalTokenPassword')
+    .orElse(providers.environmentVariable('CENTRAL_PORTAL_TOKEN_PASSWORD'))
+
+def requireReleaseVersion = {
+    if (version.toString().endsWith('-SNAPSHOT')) {
+        throw new GradleException('Central release publishing is configured for release versions only. Remove the -SNAPSHOT suffix before publishing.')
+    }
+}
+
 publishing {
     publications {
         mavenJava(MavenPublication) {
@@ -99,12 +111,12 @@ publishing {
 
     repositories {
         maven {
-            name = 'sonatype'
-            url = uri(version.endsWith('SNAPSHOT') ? sonatypeSnapshotsUrl : sonatypeReleasesUrl)
+            name = 'centralPortalOssrhStagingApi'
+            url = uri(centralStagingDeployUrl)
 
             credentials {
-                username = findProperty('mavenCentralUsername') ?: System.getenv('MAVEN_CENTRAL_USERNAME')
-                password = findProperty('mavenCentralPassword') ?: System.getenv('MAVEN_CENTRAL_PASSWORD')
+                username = portalTokenUsername.orNull
+                password = portalTokenPassword.orNull
             }
         }
     }
@@ -117,5 +129,35 @@ signing {
     if (signingKey && signingPassword) {
         useInMemoryPgpKeys(signingKey, signingPassword)
         sign publishing.publications.mavenJava
+    }
+}
+
+tasks.withType(PublishToMavenRepository).configureEach {
+    doFirst {
+        requireReleaseVersion()
+        if (!portalTokenUsername.present || !portalTokenPassword.present) {
+            throw new GradleException('Central Portal token credentials are required. Set CENTRAL_PORTAL_TOKEN_USERNAME and CENTRAL_PORTAL_TOKEN_PASSWORD, or matching Gradle properties.')
+        }
+    }
+}
+
+tasks.register('releaseToCentral') {
+    group = 'publishing'
+    description = 'Publishes the current release and requests automatic release through the Central Portal OSSRH Staging API.'
+    dependsOn tasks.publish
+
+    doLast {
+        def encodedToken = "${portalTokenUsername.get()}:${portalTokenPassword.get()}".bytes.encodeBase64().toString()
+        def connection = new URL(centralManualUploadUrl).openConnection()
+        connection.setRequestMethod('POST')
+        connection.setDoOutput(true)
+        connection.setRequestProperty('Authorization', "Bearer ${encodedToken}")
+        connection.connect()
+
+        int responseCode = connection.responseCode
+        if (responseCode < 200 || responseCode >= 300) {
+            def errorBody = connection.errorStream != null ? connection.errorStream.getText('UTF-8') : ''
+            throw new GradleException("Central manual upload failed with HTTP ${responseCode}. ${errorBody}")
+        }
     }
 }

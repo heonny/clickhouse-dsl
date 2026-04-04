@@ -3,6 +3,11 @@ package io.github.heonny.clickhousedsl.model;
 import java.util.Objects;
 import java.util.function.Function;
 
+/**
+ * Aggregate expression node such as {@code count()} or {@code sum(...)}.
+ *
+ * @param <T> aggregate result type
+ */
 public final class AggregateExpression<T> implements Expression<T> {
 
     private final Function<RenderContext, String> renderer;
@@ -40,6 +45,12 @@ public final class AggregateExpression<T> implements Expression<T> {
         return new ComparisonExpression(this, ComparisonOperator.GT, other);
     }
 
+    /**
+     * Creates a windowed version of this aggregate.
+     *
+     * @param windowSpec window specification used in the {@code OVER (...)} clause
+     * @return window function expression
+     */
     public WindowFunctionExpression<T> over(WindowSpec windowSpec) {
         return new WindowFunctionExpression<>(this::render, windowSpec, type);
     }
