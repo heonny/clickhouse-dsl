@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'io.github.heonny'
-version = '0.1.0'
+version = '0.1.1'
 
 def projectName = 'clickhouse-dsl'
 def projectDescription = 'Java 17 typed Query DSL for ClickHouse with compile-time guardrails and semantic validation.'
