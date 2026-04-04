@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'io.github.heonny'
-version = '0.1.0-SNAPSHOT'
+version = '0.1.0'
 
 def projectName = 'clickhouse-dsl'
 def projectDescription = 'Java 17 typed Query DSL for ClickHouse with compile-time guardrails and semantic validation.'
@@ -127,7 +127,8 @@ signing {
     def signingPassword = findProperty('signingInMemoryKeyPassword') ?: System.getenv('SIGNING_IN_MEMORY_KEY_PASSWORD')
 
     if (signingKey && signingPassword) {
-        useInMemoryPgpKeys(signingKey, signingPassword)
+        def normalizedSigningKey = signingKey.replace('\\n', '\n')
+        useInMemoryPgpKeys(normalizedSigningKey, signingPassword)
         sign publishing.publications.mavenJava
     }
 }

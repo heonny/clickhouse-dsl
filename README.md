@@ -12,13 +12,13 @@ Java 17 기반의 ClickHouse typed Query DSL.
 
 ## Getting Started
 
-현재는 로컬 개발 기준으로 바로 빌드해서 쓸 수 있고, 이후 Maven Central 배포를 목표로 한다.
+현재는 Maven Central release 배포까지 가능한 상태다.
 
 Gradle:
 
 ```gradle
 dependencies {
-    implementation("io.github.heonny:clickhouse-dsl:0.1.0-SNAPSHOT")
+    implementation("io.github.heonny:clickhouse-dsl:0.1.0")
 }
 ```
 
@@ -28,7 +28,7 @@ Maven:
 <dependency>
     <groupId>io.github.heonny</groupId>
     <artifactId>clickhouse-dsl</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.1.0</version>
 </dependency>
 ```
 
@@ -52,6 +52,13 @@ Maven Central 배포용 메타데이터와 signing 스켈레톤은 이미 포함
 - `SIGNING_IN_MEMORY_KEY_PASSWORD`
 
 현재 build는 release-only publishing 기준으로 맞춰져 있다. 즉, `-SNAPSHOT` 버전으로는 publish가 실패하도록 막아뒀다.
+
+GitHub Actions 기준으로는 아래 secrets를 등록하면 된다.
+
+- `CENTRAL_PORTAL_TOKEN_USERNAME`
+- `CENTRAL_PORTAL_TOKEN_PASSWORD`
+- `SIGNING_IN_MEMORY_KEY`
+- `SIGNING_IN_MEMORY_KEY_PASSWORD`
 
 처음 읽는 순서는 이 정도면 충분하다.
 
