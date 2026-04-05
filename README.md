@@ -1,11 +1,43 @@
-# clickhouse-dsl
+<p align="center">
+  <img src="./docs/assets/logo.svg" alt="clickhouse-dsl logo" width="320" />
+</p>
 
-[English README](./README.en.md)
+<p align="center">
+  <a href="./README.en.md">English README</a>
+</p>
 
-![coverage](./docs/badges/coverage.svg)
-![tests](./docs/badges/tests.svg)
-![version](./docs/badges/version.svg)
-![license](./docs/badges/license.svg)
+<p align="center">
+  <img src="./docs/badges/coverage.svg" alt="coverage" />
+  <img src="./docs/badges/tests.svg" alt="tests" />
+  <img src="./docs/badges/version.svg" alt="version" />
+  <img src="./docs/badges/license.svg" alt="license" />
+</p>
+
+<h1 align="center">Fluent Queries for ClickHouse</h1>
+
+<p align="center">
+  Java 17+ typed Query DSL for building safer, more readable ClickHouse queries.
+  <br />
+  문자열 조립 대신 구조화된 DSL과 validation으로 쿼리를 만들고, 최종적으로 안전한 SQL 문자열로 렌더링합니다.
+</p>
+
+<p align="center">
+  <a href="./docs/guide.md"><strong>Documentation</strong></a>
+  ·
+  <a href="./src/test/java/io/github/heonny/clickhousedsl/samples"><strong>Examples</strong></a>
+  ·
+  <a href="https://mvnrepository.com/artifact/io.github.heonny/clickhouse-dsl"><strong>Maven Repository</strong></a>
+  ·
+  <a href="https://github.com/heonny/clickhouse-dsl"><strong>GitHub</strong></a>
+</p>
+
+```xml
+<dependency>
+    <groupId>io.github.heonny</groupId>
+    <artifactId>clickhouse-dsl</artifactId>
+    <version>0.1.2</version>
+</dependency>
+```
 
 `clickhouse-dsl`은 ClickHouse 쿼리를 Java 코드에서 더 안전하고 읽기 좋게 만들기 위한 typed Query DSL입니다.
 
@@ -59,6 +91,7 @@ Maven:
 README에는 빠르게 시작하는 데 필요한 내용만 남기고, 심화 문서는 `docs/` 아래로 분리해 두었습니다.
 
 - [`docs/guide.md`](./docs/guide.md)
+- [`docs/branding.md`](./docs/branding.md)
 - [`docs/VERSIONING.md`](./docs/VERSIONING.md)
 - [`docs/RELEASE.md`](./docs/RELEASE.md)
 

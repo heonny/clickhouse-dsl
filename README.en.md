@@ -1,21 +1,55 @@
-# clickhouse-dsl
+<p align="center">
+  <img src="./docs/assets/logo.svg" alt="clickhouse-dsl logo" width="320" />
+</p>
 
-[한국어 README](./README.md)
+<p align="center">
+  <a href="./README.md">한국어 README</a>
+</p>
 
-![coverage](./docs/badges/coverage.svg)
-![tests](./docs/badges/tests.svg)
-![version](./docs/badges/version.svg)
-![license](./docs/badges/license.svg)
+<p align="center">
+  <img src="./docs/badges/coverage.svg" alt="coverage" />
+  <img src="./docs/badges/tests.svg" alt="tests" />
+  <img src="./docs/badges/version.svg" alt="version" />
+  <img src="./docs/badges/license.svg" alt="license" />
+</p>
 
-`clickhouse-dsl` is a Java 17+ typed Query DSL for building ClickHouse SQL more safely and readably.
+<h1 align="center">Fluent Queries for ClickHouse</h1>
 
-The project is intentionally focused on building, validating, and rendering SQL strings from Java code. It is not trying to become a full ORM or transport-heavy execution framework.
+<p align="center">
+  Java 17+ typed Query DSL for building safer, more readable ClickHouse queries.
+  <br />
+  Build structured queries in Java, validate them early, and render clean SQL strings without falling back to fragile string concatenation.
+</p>
 
-- Express ClickHouse-oriented syntax in Java code
-- Push as many mistakes as possible into compile-time guardrails
-- Use semantic validation for the rules Java's type system cannot enforce cleanly
-- Keep the model POJO-friendly, immutable, and lightweight
-- Render with placeholders to reduce SQL injection risk
+<p align="center">
+  <a href="./docs/guide.md"><strong>Documentation</strong></a>
+  ·
+  <a href="./src/test/java/io/github/heonny/clickhousedsl/samples"><strong>Examples</strong></a>
+  ·
+  <a href="https://mvnrepository.com/artifact/io.github.heonny/clickhouse-dsl"><strong>Maven Repository</strong></a>
+  ·
+  <a href="https://github.com/heonny/clickhouse-dsl"><strong>GitHub</strong></a>
+</p>
+
+```xml
+<dependency>
+    <groupId>io.github.heonny</groupId>
+    <artifactId>clickhouse-dsl</artifactId>
+    <version>0.1.2</version>
+</dependency>
+```
+
+`clickhouse-dsl` is a typed Query DSL for building ClickHouse queries more safely and readably from Java code.
+
+The released artifact targets `Java 17+` as its minimum runtime baseline.
+
+This project is intentionally focused on assembling, validating, and rendering SQL strings from Java. It is not trying to become a full ORM or a transport-heavy execution framework.
+
+- Express ClickHouse-oriented syntax naturally in Java code.
+- Push as many mistakes as possible into compile-time guardrails.
+- Use semantic validation for rules that Java's type system cannot enforce cleanly.
+- Keep the model POJO-friendly, immutable, and lightweight.
+- Render with placeholders to reduce SQL injection risk compared with raw string assembly.
 
 ## AI Guides
 
@@ -27,7 +61,7 @@ If you want an AI agent to use this repository predictably, start here.
 
 ## Getting Started
 
-Add the dependency:
+You can use the released artifact directly from Maven Central.
 
 Gradle:
 
@@ -47,16 +81,17 @@ Maven:
 </dependency>
 ```
 
-Verify the project locally:
+To verify the project locally:
 
 ```bash
 ./gradlew test
 ./gradlew check
 ```
 
-For deeper documents:
+The README keeps the fast-start path short. Deeper documents live under `docs/`.
 
 - [`docs/guide.md`](./docs/guide.md)
+- [`docs/branding.md`](./docs/branding.md)
 - [`docs/VERSIONING.md`](./docs/VERSIONING.md)
 - [`docs/RELEASE.md`](./docs/RELEASE.md)
 
@@ -64,9 +99,10 @@ Recommended reading order:
 
 1. `Quick Example` below
 2. [`ReadmeExampleTest.java`](./src/test/java/io/github/heonny/clickhousedsl/api/ReadmeExampleTest.java)
-3. `samples/basic`
-4. `samples/advanced`
-5. `samples/realworld`
+3. [`docs/guide.md`](./docs/guide.md)
+4. `samples/basic`
+5. `samples/advanced`
+6. `samples/realworld`
 
 ## Current Scope
 
@@ -104,7 +140,7 @@ Still intentionally incomplete:
 For production code, prefer this flow:
 
 1. Build a `Query` with the DSL.
-2. Call `validateOrThrow(query)` or `renderValidatedQuery(query)`.
+2. Call `validateOrThrow(query)` or use a `renderValidated*` path.
 3. Pass the rendered SQL and ordered parameters to your existing execution layer.
 
 Example:
@@ -130,30 +166,22 @@ Avoid:
 - ignoring `ValidationResult`
 - adding the same setting twice
 
-The executor code inside this repository is secondary. The recommended integration style is still: validate, render, then hand SQL to `JdbcTemplate`, MyBatis, or your existing execution boundary.
-
-## Aggregate State Safety
-
-For aggregate-state tables:
-
-1. declare state fields with `stateColumn(...)`
-2. merge them with `countMerge`, `countIfMerge`, `uniqMerge`, or `sumMerge`
-3. finish with `renderValidatedQuery(query)` and hand the result to your existing execution tool
-
-## Design Position
-
-This library is not trying to be a generic SQL DSL or ORM.
-
-`A typed middle layer that is more faithful to ClickHouse than generic DSLs, and safer than raw string SQL.`
+The center of this library is `typed DSL + validation + SQL rendering`. In practice, execution is still best handled by tools you already use, such as `JdbcTemplate`, MyBatis, or your own internal execution boundary.
 
 ## Why Not JPA / JdbcTemplate / MyBatis
 
 | Approach | Strength | Limitation |
 |--------|------|------|
 | JPA / Criteria | Familiar for entity-centric CRUD | Weak fit for ClickHouse-heavy analytics queries and specialized functions |
-| JdbcTemplate + string SQL | Direct and fast | No compile-time guardrails; dynamic branching degrades quickly |
-| MyBatis XML / `@NativeQuery` | Explicit SQL is familiar | Complex dynamic queries become difficult to maintain and validate structurally |
-| `clickhouse-dsl` | Keeps ClickHouse syntax while improving guardrails, snapshots, and composability | Execution is still best handled by existing tools like `JdbcTemplate` |
+| JdbcTemplate + string SQL | Direct and fast | No compile-time guardrails, dynamic branching degrades quickly |
+| MyBatis XML / `@NativeQuery` | Explicit SQL feels familiar | Complex dynamic queries become noisy and structurally hard to validate |
+| `clickhouse-dsl` | Keeps ClickHouse syntax while improving guardrails, snapshots, and composability | Execution is still best delegated to existing tools such as `JdbcTemplate` |
+
+What matters most here:
+
+- `Compile-time safety`: move as many query mistakes as possible earlier.
+- `Testability`: lock both the DSL object and the rendered SQL with snapshot-style checks.
+- `Dynamic query flexibility`: compose conditions in POJOs instead of fragile string branches.
 
 ## Quick Example
 
