@@ -25,3 +25,11 @@ jobs:
 
       - name: Run checks
         run: ./gradlew clean check
+
+      - name: Upload coverage to Codecov
+        if: ${{ secrets.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@v6
+        with:
+          files: build/reports/jacoco/test/jacocoTestReport.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true

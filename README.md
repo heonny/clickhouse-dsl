@@ -7,10 +7,11 @@
 </p>
 
 <p align="center">
-  <img src="./docs/badges/coverage.svg" alt="coverage" />
+  <img src="https://codecov.io/gh/heonny/clickhouse-dsl/graph/badge.svg" alt="coverage" />
   <img src="https://github.com/heonny/clickhouse-dsl/actions/workflows/ci.yml/badge.svg?branch=main" alt="tests" />
   <img src="https://img.shields.io/maven-central/v/io.github.heonny/clickhouse-dsl?label=maven" alt="Maven Central version" />
-  <img src="https://img.shields.io/github/license/heonny/clickhouse-dsl" alt="license" />
+  <img src="https://img.shields.io/badge/java-17%2B-007396" alt="Java 17+" />
+  <img src="https://img.shields.io/badge/license-Apache--2.0-informational" alt="license" />
 </p>
 
 <h1 align="center">Fluent Queries for ClickHouse</h1>
