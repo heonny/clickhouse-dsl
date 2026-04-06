@@ -12,6 +12,7 @@
   - `SIGNING_IN_MEMORY_KEY`
   - `SIGNING_IN_MEMORY_KEY_PASSWORD`
 - [`../build.gradle`](../build.gradle)의 `version` 값이 release 버전으로 설정되어 있음
+- README, badge 등 외부에 노출되는 버전 표기가 release 버전으로 정리되어 있음
 - 작업 트리가 정리되어 있음
 
 ## 릴리즈 전 점검
@@ -26,7 +27,10 @@
 - 테스트 통과
 - Javadoc 생성 성공
 - jacoco coverage 기준 통과
-- README의 dependency 예시가 현재 release 버전과 일치
+- [`../build.gradle`](../build.gradle)의 버전과 README의 dependency 예시가 현재 release 버전과 일치
+- README에서 노출되는 정적 버전 표기도 현재 release 버전과 일치
+  - 예: [`../docs/badges/version.svg`](../docs/badges/version.svg)
+- 검증 후 작업 트리에 의도하지 않은 변경이 남지 않음
 
 ## 릴리즈 절차
 
@@ -41,16 +45,23 @@ git pull --ff-only origin main
 
 ```bash
 ./gradlew clean check
+./gradlew publishToMavenLocal
 git add build.gradle README.md README.en.md docs
-git commit -m "release: prepare 0.1.2"
+git commit -m "chore: 0.1.2 릴리즈 준비"
 git tag v0.1.2
 git push origin main
 git push origin v0.1.2
 ```
 
+주의:
+
+- tag는 version 정합성 확인과 검증이 끝난 뒤 마지막에 만든다.
+- 이미 push된 release tag는 수정하거나 재사용하지 않는다.
+- release 버전을 잘못 올렸다면 기존 tag를 움직이지 말고 다음 patch 버전으로 다시 준비한다.
+
 ## GitHub Actions 동작
 
-- [`../.github/workflows/release.yml`](../.github/workflows/release.yml)은 `v*` tag push를 감지한다.
+- [`../.github/workflows/release.yml`](../.github/workflows/release.yml)은 `v*` tag push만 감지한다.
 - workflow는 아래 순서로 동작한다.
   1. JDK 17 설정
   2. tag 버전과 project 버전 일치 여부 검증
@@ -69,4 +80,5 @@ git push origin v0.1.2
 - 이미 배포된 버전 tag를 다시 push하지 않는다.
 - 같은 버전을 두 번 release 하지 않는다.
 - tag만 만들고 `main`을 push하지 않으면 소스 상태와 배포 상태가 어긋날 수 있다.
+- tag를 먼저 만들고 이후에 version 파일이나 README를 수정하지 않는다.
 - release-only 운영 기준이므로 `-SNAPSHOT` 사용을 전제로 한 문서나 workflow를 추가하지 않는다.
