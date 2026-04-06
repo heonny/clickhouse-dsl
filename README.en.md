@@ -36,7 +36,7 @@
 <dependency>
     <groupId>io.github.heonny</groupId>
     <artifactId>clickhouse-dsl</artifactId>
-    <version>0.1.4</version>
+    <version>0.1.5</version>
 </dependency>
 ```
 
@@ -52,14 +52,6 @@ This project is intentionally focused on assembling, validating, and rendering S
 - Keep the model POJO-friendly, immutable, and lightweight.
 - Render with placeholders to reduce SQL injection risk compared with raw string assembly.
 
-## AI Guides
-
-If you want an AI agent to use this repository predictably, start here.
-
-- [`skills/clickhouse-dsl/SKILL.md`](./skills/clickhouse-dsl/SKILL.md)
-- [`docs/ai/CODEX.md`](./docs/ai/CODEX.md)
-- [`docs/ai/CLAUDE.md`](./docs/ai/CLAUDE.md)
-
 ## Getting Started
 
 You can use the released artifact directly from Maven Central.
@@ -68,7 +60,7 @@ Gradle:
 
 ```gradle
 dependencies {
-    implementation("io.github.heonny:clickhouse-dsl:0.1.4")
+    implementation("io.github.heonny:clickhouse-dsl:0.1.5")
 }
 ```
 
@@ -78,7 +70,7 @@ Maven:
 <dependency>
     <groupId>io.github.heonny</groupId>
     <artifactId>clickhouse-dsl</artifactId>
-    <version>0.1.4</version>
+    <version>0.1.5</version>
 </dependency>
 ```
 
@@ -89,7 +81,58 @@ To verify the project locally:
 ./gradlew check
 ```
 
-The README keeps the fast-start path short. Deeper documents live under `docs/`.
+The core usage pattern is simple:
+
+- the DSL builds, validates, and renders a `Query`
+- your existing execution layer still executes `RenderedQuery`
+
+The most direct JDBC example looks like this:
+
+```java
+import static io.github.heonny.clickhousedsl.api.ClickHouseDsl.*;
+
+import io.github.heonny.clickhousedsl.model.Query;
+import io.github.heonny.clickhousedsl.model.RenderedQuery;
+import io.github.heonny.clickhousedsl.model.Table;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+
+Table users = Table.of("analytics.users").as("u");
+var userName = users.column("name", String.class);
+var appId = users.column("app_id", Long.class);
+
+Query query = select(userName, count())
+    .from(users)
+    .where(appId.eq(param(7L, Long.class)))
+    .groupBy(userName)
+    .build();
+
+RenderedQuery rendered = renderValidatedQuery(query);
+
+try (Connection connection = dataSource.getConnection();
+     PreparedStatement statement = connection.prepareStatement(rendered.sql())) {
+    for (int index = 0; index < rendered.parameters().size(); index++) {
+        statement.setObject(index + 1, rendered.parameters().get(index));
+    }
+    statement.executeQuery();
+}
+```
+
+With `JdbcTemplate`, you pass the same `RenderedQuery` through:
+
+```java
+RenderedQuery rendered = renderValidatedQuery(query);
+
+jdbcTemplate.query(
+    rendered.sql(),
+    rendered.parameters().toArray(),
+    rowMapper
+);
+```
+
+The MyBatis story is the same in shorter form: render in the DSL layer, then hand `sql()` plus `parameters()` to your existing mapper/provider boundary.
+
+Examples beyond Quick Start, including execution patterns, dynamic filters, and debug/pretty rendering, live in [`docs/guide.md`](./docs/guide.md).
 
 - [`docs/guide.md`](./docs/guide.md)
 - [`docs/branding.md`](./docs/branding.md)
@@ -130,11 +173,13 @@ Supported today:
 
 Still intentionally incomplete:
 
-- deeper ClickHouse transport integration
+- broader official execution integration such as an expanded `RenderedQuery`-based executor layer or a `JdbcTemplate` wrapper
 - server-side explain fetching
 - benchmark runner
 - broader function type coverage
 - detailed window frame syntax
+
+Near-term roadmap note: if an official execution layer is added, the default expectation is to treat it as a `MINOR` release candidate and land it under `0.2.0`, not a patch release.
 
 ## Safe Usage
 
@@ -144,22 +189,7 @@ For production code, prefer this flow:
 2. Call `validateOrThrow(query)` or use a `renderValidated*` path.
 3. Pass the rendered SQL and ordered parameters to your existing execution layer.
 
-Example:
-
-```java
-Query query = select(userName, count())
-    .from(users)
-    .groupBy(userName)
-    .build();
-
-RenderedQuery rendered = renderValidatedQuery(query);
-
-jdbcTemplate.query(
-    rendered.sql(),
-    rendered.parameters().toArray(),
-    rowMapper
-);
-```
+Execution examples, dynamic filter helpers, `debugSql()`, and `RenderOptions.pretty()` are documented in [`docs/guide.md`](./docs/guide.md).
 
 Avoid:
 
@@ -191,6 +221,10 @@ What matters most here:
 ```java
 import static io.github.heonny.clickhousedsl.api.ClickHouseDsl.*;
 
+import io.github.heonny.clickhousedsl.model.Query;
+import io.github.heonny.clickhousedsl.model.RenderedQuery;
+import io.github.heonny.clickhousedsl.model.Table;
+
 Table users = Table.of("analytics.users").as("u").finalTable();
 Table events = Table.of("analytics.events").as("e");
 
@@ -205,8 +239,7 @@ Query query = select(
         userName,
         count(),
         rowNumber(window().partitionBy(userName).orderBy(age.desc())),
-        io.github.heonny.clickhousedsl.model.Expressions.sum(score)
-            .over(window().partitionBy(userName).orderBy(age.asc()))
+        sum(score).over(window().partitionBy(userName).orderBy(age.asc()))
     )
     .from(users)
     .innerJoin(events).on(userId, eventUserId)
@@ -221,3 +254,17 @@ Query query = select(
 
 RenderedQuery rendered = renderValidatedQuery(query);
 ```
+
+This example's rendered SQL, dynamic filter helpers, and debug/pretty render follow-ups are documented in [`docs/guide.md`](./docs/guide.md).
+
+## More Examples
+
+For `WITH`, `UNION`, window functions, aggregate state workflows, `EXPLAIN`, and more realistic query shapes, use [`docs/guide.md`](./docs/guide.md) together with the sample tests under `samples/*`.
+
+## AI Guides
+
+If you want an AI agent to use this repository predictably, start here.
+
+- [`skills/clickhouse-dsl/SKILL.md`](./skills/clickhouse-dsl/SKILL.md)
+- [`docs/ai/CODEX.md`](./docs/ai/CODEX.md)
+- [`docs/ai/CLAUDE.md`](./docs/ai/CLAUDE.md)

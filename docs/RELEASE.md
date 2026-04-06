@@ -34,23 +34,33 @@
 
 ## 릴리즈 절차
 
-예시 버전이 `0.1.2` 인 경우:
+예시 버전이 `0.1.5` 인 경우:
 
 ```bash
 git checkout main
 git pull --ff-only origin main
 ```
 
-[`../build.gradle`](../build.gradle)의 버전을 `0.1.2`로 올린 뒤:
+[`../build.gradle`](../build.gradle)의 버전을 `0.1.5`로 올린 뒤:
+
+```bash
+rg -n "0\\.1\\.4|0\\.1\\.5" README.md README.en.md docs build.gradle .github
+```
+
+위 검색 결과를 보고 아래를 모두 확인한다.
+
+- 이전 버전 문자열이 남아 있지 않음
+- 새 버전 문자열이 의도한 파일에만 존재함
+- README, 문서, build metadata가 같은 버전을 가리킴
 
 ```bash
 ./gradlew clean check
 ./gradlew publishToMavenLocal
 git add build.gradle README.md README.en.md docs
-git commit -m "chore: 0.1.2 릴리즈 준비"
-git tag v0.1.2
+git commit -m "chore: 0.1.5 릴리즈 준비"
+git tag v0.1.5
 git push origin main
-git push origin v0.1.2
+git push origin v0.1.5
 ```
 
 주의:
@@ -82,4 +92,5 @@ git push origin v0.1.2
 - 같은 버전을 두 번 release 하지 않는다.
 - tag만 만들고 `main`을 push하지 않으면 소스 상태와 배포 상태가 어긋날 수 있다.
 - tag를 먼저 만들고 이후에 version 파일이나 README를 수정하지 않는다.
+- release 직전에는 반드시 `rg`로 이전/새 버전 문자열을 전역 검색해 누락 여부를 확인한다.
 - release-only 운영 기준이므로 `-SNAPSHOT` 사용을 전제로 한 문서나 workflow를 추가하지 않는다.

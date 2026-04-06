@@ -174,4 +174,26 @@ public final class Expressions {
     public static WindowFunctionExpression<Long> rowNumber(WindowSpec windowSpec) {
         return new WindowFunctionExpression<>(context -> "rowNumber()", windowSpec, Long.class);
     }
+
+    /**
+     * Combines two boolean expressions with {@code AND}.
+     *
+     * @param left left expression
+     * @param right right expression
+     * @return combined logical expression
+     */
+    public static LogicalExpression and(Expression<Boolean> left, Expression<Boolean> right) {
+        return new LogicalExpression(left, LogicalOperator.AND, right);
+    }
+
+    /**
+     * Combines two boolean expressions with {@code OR}.
+     *
+     * @param left left expression
+     * @param right right expression
+     * @return combined logical expression
+     */
+    public static LogicalExpression or(Expression<Boolean> left, Expression<Boolean> right) {
+        return new LogicalExpression(left, LogicalOperator.OR, right);
+    }
 }

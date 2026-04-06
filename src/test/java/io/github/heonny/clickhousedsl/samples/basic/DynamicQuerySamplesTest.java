@@ -1,10 +1,10 @@
 package io.github.heonny.clickhousedsl.samples.basic;
 
+import static io.github.heonny.clickhousedsl.api.ClickHouseDsl.allOf;
 import static io.github.heonny.clickhousedsl.api.ClickHouseDsl.param;
 import static io.github.heonny.clickhousedsl.api.ClickHouseDsl.select;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.heonny.clickhousedsl.model.LogicalExpression;
 import io.github.heonny.clickhousedsl.model.Query;
 import io.github.heonny.clickhousedsl.model.Table;
 import io.github.heonny.clickhousedsl.render.ClickHouseRenderer;
@@ -22,13 +22,13 @@ class DynamicQuerySamplesTest {
         var country = sessions.column("country", String.class);
         var duration = sessions.column("duration_ms", Long.class);
 
-        LogicalExpression predicate = appId.eq(param(7L, Long.class))
-            .and(duration.gt(param(1000L, Long.class)));
-        predicate = predicate.and(country.eq(param("KR", String.class)));
-
         Query query = select(sessionId, country, duration)
             .from(sessions)
-            .where(predicate)
+            .whereIfPresent(allOf(
+                appId.eq(param(7L, Long.class)),
+                duration.gt(param(1000L, Long.class)),
+                country.eq(param("KR", String.class))
+            ))
             .orderBy(duration.desc(), sessionId.asc())
             .limit(20)
             .build();

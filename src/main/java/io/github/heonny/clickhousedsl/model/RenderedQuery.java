@@ -40,4 +40,15 @@ public final class RenderedQuery {
     public List<Object> parameters() {
         return parameters;
     }
+
+    /**
+     * Returns a debug-only SQL string with placeholders interpolated.
+     *
+     * <p>This method is intended for logs and debugging only. Do not execute the returned string.
+     *
+     * @return SQL string with parameter values interpolated for debugging
+     */
+    public String debugSql() {
+        return DebugSqlFormatter.format(sql, parameters);
+    }
 }

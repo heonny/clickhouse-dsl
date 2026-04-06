@@ -40,6 +40,103 @@
 - `RefinedCompanyStyleSamplesTest`
   - 실무 쿼리 구조를 정제한 공개용 샘플
 
+## Usage Patterns
+
+README에는 Quick Start만 남기고, 실제 사용 패턴 예시는 이 문서로 모읍니다.
+
+### Execution Boundary
+
+기본 원칙은 단순합니다.
+
+1. DSL에서 `Query`를 만든다.
+2. `validateOrThrow(...)` 또는 `renderValidated*` 경로로 검증하고 렌더링한다.
+3. 실행은 기존 `PreparedStatement`, `JdbcTemplate`, MyBatis, 또는 사내 실행 계층에 맡긴다.
+
+JDBC 예시는 아래와 같습니다.
+
+```java
+import static io.github.heonny.clickhousedsl.api.ClickHouseDsl.*;
+
+import io.github.heonny.clickhousedsl.model.Query;
+import io.github.heonny.clickhousedsl.model.RenderedQuery;
+import io.github.heonny.clickhousedsl.model.Table;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+
+Table users = Table.of("analytics.users").as("u");
+var userName = users.column("name", String.class);
+var appId = users.column("app_id", Long.class);
+
+Query query = select(userName, count())
+    .from(users)
+    .where(appId.eq(param(7L, Long.class)))
+    .groupBy(userName)
+    .build();
+
+RenderedQuery rendered = renderValidatedQuery(query);
+
+try (Connection connection = dataSource.getConnection();
+     PreparedStatement statement = connection.prepareStatement(rendered.sql())) {
+    for (int index = 0; index < rendered.parameters().size(); index++) {
+        statement.setObject(index + 1, rendered.parameters().get(index));
+    }
+    statement.executeQuery();
+}
+```
+
+`JdbcTemplate`은 결국 같은 `RenderedQuery`를 넘기면 됩니다.
+
+```java
+RenderedQuery rendered = renderValidatedQuery(query);
+
+jdbcTemplate.query(
+    rendered.sql(),
+    rendered.parameters().toArray(),
+    rowMapper
+);
+```
+
+MyBatis도 같은 아이디어입니다. DSL은 `RenderedQuery`까지만 만들고, 기존 mapper/provider 계층이 `sql()`과 `parameters()`를 소비합니다.
+
+### Dynamic Filters
+
+null-safe 조건 조합이 필요하면 `allOf(...)`, `anyOf(...)`, `whereIfPresent(...)`를 함께 쓰는 편이 좋습니다.
+
+```java
+Query query = select(sessionId, country, duration)
+    .from(sessions)
+    .whereIfPresent(allOf(
+        appId.eq(param(7L, Long.class)),
+        duration.gt(param(1000L, Long.class)),
+        countryCode != null ? country.eq(param(countryCode, String.class)) : null
+    ))
+    .orderBy(duration.desc(), sessionId.asc())
+    .limit(20)
+    .build();
+```
+
+`allOf(...)`와 `anyOf(...)`는 `null`을 건너뛰고, 최종적으로 남는 조건이 없으면 `null`을 반환합니다.
+
+### Debug And Pretty Rendering
+
+로그나 디버깅에서는 치환된 SQL 문자열을 볼 수 있습니다.
+
+```java
+String debugSql = rendered.debugSql();
+```
+
+이 문자열은 실행용이 아니라 디버그용입니다. 실제 실행은 계속 `rendered.sql()` + `rendered.parameters()` 경로를 사용해야 합니다.
+
+가독성이 중요한 로그나 테스트 snapshot에서는 pretty render를 opt-in으로 사용할 수 있습니다.
+
+```java
+import io.github.heonny.clickhousedsl.render.RenderOptions;
+
+String prettySql = render(query, RenderOptions.pretty());
+```
+
+이 옵션은 출력 포맷만 바꾸며, 실행 경로는 여전히 compact SQL + ordered parameters 입니다.
+
 ## Validation Philosophy
 
 기본 원칙은 단순합니다. compile-time으로 최대한 잡되, 그 범위를 과장하지 않습니다.

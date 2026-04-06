@@ -11,6 +11,7 @@ import io.github.heonny.clickhousedsl.model.Setting;
 import io.github.heonny.clickhousedsl.model.Sort;
 import io.github.heonny.clickhousedsl.model.WithClause;
 import java.util.Iterator;
+import java.util.Objects;
 
 /**
  * Renders immutable query objects into ClickHouse SQL plus positional parameters.
@@ -28,9 +29,26 @@ public final class ClickHouseRenderer {
      * @return rendered SQL plus bound parameters
      */
     public RenderedQuery render(Query query) {
+        return render(query, RenderOptions.compact());
+    }
+
+    /**
+     * Renders a query into a SQL string and ordered parameter list using explicit render options.
+     *
+     * @param query query to render
+     * @param options render options
+     * @return rendered SQL plus bound parameters
+     */
+    public RenderedQuery render(Query query, RenderOptions options) {
+        Objects.requireNonNull(query, "query");
+        Objects.requireNonNull(options, "options");
         RenderContext context = new RenderContext();
         StringBuilder sql = new StringBuilder();
-        renderQuery(sql, query, context);
+        if (options.prettyPrint()) {
+            renderQueryPretty(sql, query, context);
+        } else {
+            renderQueryCompact(sql, query, context);
+        }
         return new RenderedQuery(sql.toString(), context.parameters());
     }
 
@@ -44,18 +62,29 @@ public final class ClickHouseRenderer {
      * @return rendered SQL plus bound parameters
      */
     public RenderedQuery renderValidated(Query query) {
-        ClickHouseDsl.validateOrThrow(query);
-        return render(query);
+        return renderValidated(query, RenderOptions.compact());
     }
 
-    private void renderQuery(StringBuilder sql, Query query, RenderContext context) {
+    /**
+     * Validates a query before rendering it with explicit render options.
+     *
+     * @param query query to validate and render
+     * @param options render options
+     * @return rendered SQL plus bound parameters
+     */
+    public RenderedQuery renderValidated(Query query, RenderOptions options) {
+        ClickHouseDsl.validateOrThrow(query);
+        return render(query, options);
+    }
+
+    private void renderQueryCompact(StringBuilder sql, Query query, RenderContext context) {
         if (!query.withClauses().isEmpty()) {
             sql.append("WITH ");
             Iterator<WithClause> iterator = query.withClauses().iterator();
             while (iterator.hasNext()) {
                 WithClause withClause = iterator.next();
                 sql.append(withClause.alias().sql()).append(" AS (");
-                renderQueryBody(sql, withClause.query(), context);
+                renderQueryBodyCompact(sql, withClause.query(), context);
                 sql.append(")");
                 if (iterator.hasNext()) {
                     sql.append(", ");
@@ -65,14 +94,14 @@ public final class ClickHouseRenderer {
         }
 
         // The primary query body is rendered before any UNION / UNION ALL branches.
-        renderQueryBody(sql, query, context);
+        renderQueryBodyCompact(sql, query, context);
         for (SetOperation setOperation : query.setOperations()) {
             sql.append(' ').append(setOperation.type().sql()).append(' ');
-            renderQueryBody(sql, setOperation.query(), context);
+            renderQueryBodyCompact(sql, setOperation.query(), context);
         }
     }
 
-    private void renderQueryBody(StringBuilder sql, Query query, RenderContext context) {
+    private void renderQueryBodyCompact(StringBuilder sql, Query query, RenderContext context) {
         sql.append("SELECT ");
         appendExpressions(sql, query.selections(), context);
         sql.append(" FROM ").append(query.from().renderFromClause());
@@ -136,6 +165,80 @@ public final class ClickHouseRenderer {
         }
     }
 
+    private void renderQueryPretty(StringBuilder sql, Query query, RenderContext context) {
+        if (!query.withClauses().isEmpty()) {
+            sql.append("WITH\n");
+            Iterator<WithClause> iterator = query.withClauses().iterator();
+            while (iterator.hasNext()) {
+                WithClause withClause = iterator.next();
+                sql.append("  ").append(withClause.alias().sql()).append(" AS (\n");
+                StringBuilder nested = new StringBuilder();
+                renderQueryBodyPretty(nested, withClause.query(), context);
+                sql.append(indent(nested.toString(), 4)).append('\n');
+                sql.append("  )");
+                if (iterator.hasNext()) {
+                    sql.append(",\n");
+                } else {
+                    sql.append('\n');
+                }
+            }
+        }
+
+        renderQueryBodyPretty(sql, query, context);
+        for (SetOperation setOperation : query.setOperations()) {
+            sql.append('\n').append(setOperation.type().sql()).append('\n');
+            renderQueryBodyPretty(sql, setOperation.query(), context);
+        }
+    }
+
+    private void renderQueryBodyPretty(StringBuilder sql, Query query, RenderContext context) {
+        sql.append("SELECT\n");
+        appendExpressionsPretty(sql, query.selections(), context);
+        sql.append('\n').append("FROM ").append(query.from().renderFromClause());
+        for (Join join : query.joins()) {
+            sql.append('\n')
+                .append(join.type().sql())
+                .append(' ')
+                .append(join.table().renderFromClause())
+                .append(" ON ")
+                .append(join.leftKey().render(context))
+                .append(" = ")
+                .append(join.rightKey().render(context));
+        }
+
+        if (!query.arrayJoins().isEmpty()) {
+            sql.append('\n').append("ARRAY JOIN\n");
+            appendExpressionsPretty(sql, query.arrayJoins(), context);
+        }
+        if (query.sampleRatio() != null) {
+            sql.append('\n').append("SAMPLE ").append(context.addParameter(query.sampleRatio()));
+        }
+        if (query.prewhere() != null) {
+            sql.append('\n').append("PREWHERE ").append(query.prewhere().render(context));
+        }
+        if (query.where() != null) {
+            sql.append('\n').append("WHERE ").append(query.where().render(context));
+        }
+        if (!query.groupBy().isEmpty()) {
+            sql.append('\n').append("GROUP BY\n");
+            appendExpressionsPretty(sql, query.groupBy(), context);
+        }
+        if (query.having() != null) {
+            sql.append('\n').append("HAVING ").append(query.having().render(context));
+        }
+        if (!query.orderBy().isEmpty()) {
+            sql.append('\n').append("ORDER BY\n");
+            appendSortsPretty(sql, query.orderBy(), context);
+        }
+        if (query.limit() != null) {
+            sql.append('\n').append("LIMIT ").append(context.addParameter(query.limit()));
+        }
+        if (!query.settings().isEmpty()) {
+            sql.append('\n').append("SETTINGS\n");
+            appendSettingsPretty(sql, query.settings(), context);
+        }
+    }
+
     private void appendExpressions(StringBuilder builder, Iterable<? extends Expression<?>> expressions, RenderContext context) {
         Iterator<? extends Expression<?>> iterator = expressions.iterator();
         while (iterator.hasNext()) {
@@ -144,5 +247,42 @@ public final class ClickHouseRenderer {
                 builder.append(", ");
             }
         }
+    }
+
+    private void appendExpressionsPretty(StringBuilder builder, Iterable<? extends Expression<?>> expressions, RenderContext context) {
+        Iterator<? extends Expression<?>> iterator = expressions.iterator();
+        while (iterator.hasNext()) {
+            builder.append("  ").append(iterator.next().render(context));
+            if (iterator.hasNext()) {
+                builder.append(",\n");
+            }
+        }
+    }
+
+    private void appendSortsPretty(StringBuilder builder, Iterable<Sort> sorts, RenderContext context) {
+        Iterator<Sort> iterator = sorts.iterator();
+        while (iterator.hasNext()) {
+            Sort sort = iterator.next();
+            builder.append("  ").append(sort.expression().render(context)).append(' ').append(sort.direction().name());
+            if (iterator.hasNext()) {
+                builder.append(",\n");
+            }
+        }
+    }
+
+    private void appendSettingsPretty(StringBuilder builder, Iterable<Setting> settings, RenderContext context) {
+        Iterator<Setting> iterator = settings.iterator();
+        while (iterator.hasNext()) {
+            Setting setting = iterator.next();
+            builder.append("  ").append(setting.name().sql()).append(" = ").append(context.addParameter(setting.value()));
+            if (iterator.hasNext()) {
+                builder.append(",\n");
+            }
+        }
+    }
+
+    private String indent(String value, int spaces) {
+        String prefix = " ".repeat(spaces);
+        return prefix + value.replace("\n", "\n" + prefix);
     }
 }

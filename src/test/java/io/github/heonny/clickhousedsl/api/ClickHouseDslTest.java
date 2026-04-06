@@ -9,12 +9,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.heonny.clickhousedsl.explain.ExplainType;
+import io.github.heonny.clickhousedsl.model.Expression;
 import io.github.heonny.clickhousedsl.model.Join;
 import io.github.heonny.clickhousedsl.model.JoinType;
 import io.github.heonny.clickhousedsl.model.Query;
 import io.github.heonny.clickhousedsl.model.RenderedQuery;
 import io.github.heonny.clickhousedsl.model.Table;
 import io.github.heonny.clickhousedsl.render.ClickHouseRenderer;
+import io.github.heonny.clickhousedsl.render.RenderOptions;
 import io.github.heonny.clickhousedsl.validate.SemanticAnalyzer;
 import io.github.heonny.clickhousedsl.validate.ValidationClause;
 import org.junit.jupiter.api.Test;
@@ -214,6 +216,59 @@ class ClickHouseDslTest {
         assertThat(analyzer.validate(query).errors())
             .extracting(error -> error.code())
             .containsExactly("WINDOW_FUNCTION_NOT_ALLOWED_IN_PREWHERE");
+    }
+
+    @Test
+    void combinesOptionalConditionsAndSkipsNullEntries() {
+        Table users = Table.of("users");
+        var age = users.column("age", Integer.class);
+        var country = users.column("country", String.class);
+
+        Expression<Boolean> predicate = ClickHouseDsl.allOf(
+            age.gt(18),
+            null,
+            country.eq("KR")
+        );
+
+        Query query = ClickHouseDsl.select(country)
+            .from(users)
+            .whereIfPresent(predicate)
+            .build();
+
+        assertThat(renderer.render(query).sql())
+            .isEqualTo("SELECT `users`.`country` FROM `users` WHERE (`users`.`age` > ? AND `users`.`country` = ?)");
+        assertThat(renderer.render(query).parameters()).containsExactly(18, "KR");
+    }
+
+    @Test
+    void anyOfReturnsNullWhenNoConditionIsPresent() {
+        Table users = Table.of("users");
+        var country = users.column("country", String.class);
+
+        Query query = ClickHouseDsl.select(country)
+            .from(users)
+            .whereIfPresent(ClickHouseDsl.anyOf(null, null))
+            .build();
+
+        assertThat(renderer.render(query).sql()).isEqualTo("SELECT `users`.`country` FROM `users`");
+    }
+
+    @Test
+    void exposesPrettyRenderOverloadsThroughFacade() {
+        Table users = Table.of("users");
+        var country = users.column("country", String.class);
+
+        Query query = ClickHouseDsl.select(country)
+            .from(users)
+            .where(country.eq("KR"))
+            .build();
+
+        assertThat(ClickHouseDsl.render(query, RenderOptions.pretty())).isEqualTo(
+            "SELECT\n" +
+                "  `users`.`country`\n" +
+                "FROM `users`\n" +
+                "WHERE `users`.`country` = ?"
+        );
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

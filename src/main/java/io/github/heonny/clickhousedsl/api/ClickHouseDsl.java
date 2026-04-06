@@ -19,9 +19,11 @@ import io.github.heonny.clickhousedsl.model.WindowFunctionExpression;
 import io.github.heonny.clickhousedsl.model.WindowSpec;
 import io.github.heonny.clickhousedsl.model.WithClause;
 import io.github.heonny.clickhousedsl.render.ClickHouseRenderer;
+import io.github.heonny.clickhousedsl.render.RenderOptions;
 import io.github.heonny.clickhousedsl.validate.SemanticAnalyzer;
 import io.github.heonny.clickhousedsl.validate.QueryValidationException;
 import io.github.heonny.clickhousedsl.validate.ValidationResult;
+import java.util.Objects;
 
 /**
  * Entry point for building type-aware ClickHouse queries.
@@ -99,6 +101,17 @@ public final class ClickHouseDsl {
      */
     public static AggregateExpression<Long> count() {
         return Expressions.count();
+    }
+
+    /**
+     * Creates {@code sum(...)}.
+     *
+     * @param expression numeric expression to aggregate
+     * @param <N> numeric value type
+     * @return aggregate expression
+     */
+    public static <N extends Number> AggregateExpression<N> sum(Expression<N> expression) {
+        return Expressions.sum(expression);
     }
 
     /**
@@ -314,6 +327,17 @@ public final class ClickHouseDsl {
     }
 
     /**
+     * Renders a query to SQL using explicit render options.
+     *
+     * @param query query to render
+     * @param options render options
+     * @return SQL string
+     */
+    public static String render(Query query, RenderOptions options) {
+        return new ClickHouseRenderer().render(query, options).sql();
+    }
+
+    /**
      * Validates a query before rendering and returns SQL only.
      *
      * @param query query to validate and render
@@ -325,6 +349,18 @@ public final class ClickHouseDsl {
     }
 
     /**
+     * Validates a query before rendering it with explicit render options.
+     *
+     * @param query query to validate and render
+     * @param options render options
+     * @return SQL string
+     * @throws QueryValidationException when semantic validation fails
+     */
+    public static String renderValidated(Query query, RenderOptions options) {
+        return new ClickHouseRenderer().renderValidated(query, options).sql();
+    }
+
+    /**
      * Validates a query before rendering and returns SQL plus parameters.
      *
      * @param query query to validate and render
@@ -333,6 +369,38 @@ public final class ClickHouseDsl {
      */
     public static RenderedQuery renderValidatedQuery(Query query) {
         return new ClickHouseRenderer().renderValidated(query);
+    }
+
+    /**
+     * Validates a query before rendering it with explicit render options.
+     *
+     * @param query query to validate and render
+     * @param options render options
+     * @return rendered query snapshot
+     * @throws QueryValidationException when semantic validation fails
+     */
+    public static RenderedQuery renderValidatedQuery(Query query, RenderOptions options) {
+        return new ClickHouseRenderer().renderValidated(query, options);
+    }
+
+    /**
+     * Combines conditions with {@code AND}, skipping {@code null} inputs.
+     *
+     * @param expressions boolean expressions, optionally containing {@code null}
+     * @return combined expression, a single expression, or {@code null} when no inputs remain
+     */
+    public static Expression<Boolean> allOf(Expression<Boolean>... expressions) {
+        return combineConditions(true, expressions);
+    }
+
+    /**
+     * Combines conditions with {@code OR}, skipping {@code null} inputs.
+     *
+     * @param expressions boolean expressions, optionally containing {@code null}
+     * @return combined expression, a single expression, or {@code null} when no inputs remain
+     */
+    public static Expression<Boolean> anyOf(Expression<Boolean>... expressions) {
+        return combineConditions(false, expressions);
     }
 
     /**
@@ -432,12 +500,32 @@ public final class ClickHouseDsl {
         QueryStep prewhere(Expression<Boolean> expression);
 
         /**
+         * Adds a ClickHouse {@code PREWHERE} predicate when the expression is not {@code null}.
+         *
+         * @param expression optional boolean predicate
+         * @return current query step
+         */
+        default QueryStep prewhereIfPresent(Expression<Boolean> expression) {
+            return expression == null ? this : prewhere(expression);
+        }
+
+        /**
          * Adds a {@code WHERE} predicate.
          *
          * @param expression boolean predicate
          * @return current query step
          */
         QueryStep where(Expression<Boolean> expression);
+
+        /**
+         * Adds a {@code WHERE} predicate when the expression is not {@code null}.
+         *
+         * @param expression optional boolean predicate
+         * @return current query step
+         */
+        default QueryStep whereIfPresent(Expression<Boolean> expression) {
+            return expression == null ? this : where(expression);
+        }
 
         /**
          * Starts an {@code INNER JOIN}.
@@ -532,6 +620,16 @@ public final class ClickHouseDsl {
          * @return grouped query step
          */
         GroupedQueryStep having(Expression<Boolean> expression);
+
+        /**
+         * Adds a {@code HAVING} predicate when the expression is not {@code null}.
+         *
+         * @param expression optional boolean predicate
+         * @return grouped query step
+         */
+        default GroupedQueryStep havingIfPresent(Expression<Boolean> expression) {
+            return expression == null ? this : having(expression);
+        }
     }
 
     /**
@@ -559,5 +657,21 @@ public final class ClickHouseDsl {
          * @return built query
          */
         Query build();
+    }
+
+    private static Expression<Boolean> combineConditions(boolean and, Expression<Boolean>[] expressions) {
+        Objects.requireNonNull(expressions, "expressions");
+        Expression<Boolean> combined = null;
+        for (Expression<Boolean> expression : expressions) {
+            if (expression == null) {
+                continue;
+            }
+            if (combined == null) {
+                combined = expression;
+                continue;
+            }
+            combined = and ? Expressions.and(combined, expression) : Expressions.or(combined, expression);
+        }
+        return combined;
     }
 }

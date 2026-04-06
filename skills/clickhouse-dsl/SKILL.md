@@ -40,11 +40,17 @@ jdbcTemplate.query(
 );
 ```
 
+For logs and debugging, `RenderedQuery.debugSql()` is available, but it is for debugging only. Do not treat it as an execution path.
+
+For readability in logs or tests, `render(query, RenderOptions.pretty())` is available as an opt-in formatting path. The default execution path remains compact SQL plus ordered parameters.
+
 ## Prefer
 
 - Prefer DSL nodes over raw SQL strings.
 - Prefer `renderValidatedQuery(query)` over `render(query)` for production paths.
 - Prefer existing execution infrastructure such as `JdbcTemplate`.
+- Prefer reading `docs/guide.md` and sample tests before inventing a new example style.
+- Prefer `allOf(...)`, `anyOf(...)`, `whereIfPresent(...)`, `prewhereIfPresent(...)`, and `havingIfPresent(...)` for null-safe dynamic conditions.
 - Prefer expanding validation, samples, and docs before expanding transport features.
 
 ## Avoid
@@ -71,12 +77,15 @@ Do not model raw aggregate state values as if they were normal public-facing val
 Start here when adding or reviewing DSL code:
 
 1. `README.md`
-2. `src/test/java/io/github/heonny/clickhousedsl/api/ReadmeExampleTest.java`
-3. `src/test/java/io/github/heonny/clickhousedsl/samples/basic`
-4. `src/test/java/io/github/heonny/clickhousedsl/samples/advanced`
-5. `src/test/java/io/github/heonny/clickhousedsl/samples/realworld`
+2. `docs/guide.md`
+3. `src/test/java/io/github/heonny/clickhousedsl/api/ReadmeExampleTest.java`
+4. `src/test/java/io/github/heonny/clickhousedsl/samples/basic`
+5. `src/test/java/io/github/heonny/clickhousedsl/samples/advanced`
+6. `src/test/java/io/github/heonny/clickhousedsl/samples/realworld`
 
-Reuse sample shapes before inventing a new pattern.
+Reuse guide patterns and sample shapes before inventing a new pattern.
+
+If a README example, guide example, and sample test differ, treat the tested guide/sample shape as the stronger source of truth and update the docs together.
 
 ## Output rules for AI agents
 

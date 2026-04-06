@@ -10,9 +10,10 @@
 - 버전 형식은 `MAJOR.MINOR.PATCH` 를 사용한다.
 - `-SNAPSHOT` 버전은 사용하지 않는다.
 - Git tag는 항상 `v` prefix를 사용한다.
-  - 예: `v0.1.2`
+  - 예: `v0.1.5`
 - Git tag 버전과 [`../build.gradle`](../build.gradle)의 `version` 값은 반드시 같아야 한다.
 - release tag를 만들기 전, README와 외부에 노출되는 버전 정보도 같은 release 기준으로 맞춘다.
+- release 준비 시 `rg -n "0\\.1\\.4|0\\.1\\.5|<이전버전>|<새버전>" .` 같은 전역 검색으로 잔존 버전 문자열을 반드시 확인한다.
 - 이미 push된 release tag는 수정하지 않고, 실수 시 다음 patch 버전으로 다시 release 한다.
 
 ## 증가 기준
@@ -35,17 +36,19 @@
 - `0.1.0` 첫 공개 release
 - `0.1.1` 안정성 및 문서 보강
 - `0.1.2` JDBC fetch 경계, AI guide, README 구조 정리
-- `0.2.0` 더 넓은 ClickHouse 문법과 validation 확장
+- `0.1.5` debug SQL, pretty render, 동적 조건 helper, README/API 정합성 보강
+- `0.2.0` 실행기 계층 검토(`RenderedQuery` 기반 executor/JdbcTemplate 래퍼), 더 넓은 ClickHouse 문법과 validation 확장
 - `1.0.0` 공개 API 안정화 선언
 
 ## 릴리즈 흐름
 
 1. 다음 release 버전으로 [`../build.gradle`](../build.gradle)을 올린다.
 2. README와 외부 노출 버전 정보를 함께 정리한다.
-3. 테스트와 문서를 정리한다.
-4. commit 한다.
-5. `v<version>` tag를 만든다.
-6. `main`과 tag를 push 한다.
-7. GitHub Actions가 Central release 배포를 수행한다.
+3. `rg -n "<이전버전>|<새버전>" README.md README.en.md docs build.gradle .github` 로 누락된 버전 표기가 없는지 확인한다.
+4. 테스트와 문서를 정리한다.
+5. commit 한다.
+6. `v<version>` tag를 만든다.
+7. `main`과 tag를 push 한다.
+8. GitHub Actions가 Central release 배포를 수행한다.
 
 자세한 실행 순서는 [`RELEASE.md`](./RELEASE.md)를 따른다.
