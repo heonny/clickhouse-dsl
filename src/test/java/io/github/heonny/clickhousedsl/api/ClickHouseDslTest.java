@@ -271,6 +271,28 @@ class ClickHouseDslTest {
         );
     }
 
+    @Test
+    void facadeCoversAdditionalRenderAndConditionHelperBranches() {
+        Table users = Table.of("users");
+        var country = users.column("country", String.class);
+        var age = users.column("age", Integer.class);
+
+        Query query = ClickHouseDsl.select(country)
+            .from(users)
+            .prewhereIfPresent(country.eq("KR"))
+            .whereIfPresent(ClickHouseDsl.anyOf(age.gt(18), null))
+            .build();
+
+        assertThat(ClickHouseDsl.renderValidated(query)).isEqualTo(
+            "SELECT `users`.`country` FROM `users` PREWHERE `users`.`country` = ? WHERE `users`.`age` > ?"
+        );
+        assertThat(ClickHouseDsl.renderValidatedQuery(query, RenderOptions.pretty()).parameters())
+            .containsExactly("KR", 18);
+        assertThatThrownBy(() -> ClickHouseDsl.allOf((Expression<Boolean>[]) null))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessageContaining("expressions");
+    }
+
     @SuppressWarnings({"rawtypes", "unchecked"})
     @Test
     void validatesJoinKeyTypeMismatchWhenBypassingGenericSafety() {

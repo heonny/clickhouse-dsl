@@ -156,7 +156,12 @@ class ModelCoverageTest {
         AggregateStateExpression<Integer> state = ClickHouseDsl.sumState(Expressions.param(7, Integer.class));
         AggregateExpression<Integer> merged = ClickHouseDsl.sumMerge(state);
         FunctionExpression<Integer> scalarFunction = Expressions.function("toUInt8", Integer.class, Expressions.param(1, Integer.class));
+        FunctionExpression<Long> aggregateFunction = Expressions.aggregateFunction("sum", Long.class, Expressions.param(1L, Long.class));
         BinaryArithmeticExpression<Double> division = Expressions.divide(Expressions.param(10, Integer.class), Expressions.param(2, Integer.class));
+        LogicalExpression andLogical = Expressions.and(Expressions.param(true, Boolean.class), Expressions.param(false, Boolean.class));
+        LogicalExpression orLogical = Expressions.or(Expressions.param(true, Boolean.class), Expressions.param(false, Boolean.class));
+        ReferenceExpression<String> reference = Expressions.ref("name_alias", String.class);
+        WindowFunctionExpression<Long> rowNumber = Expressions.rowNumber(ClickHouseDsl.window());
 
         assertThat(count.aggregate()).isTrue();
         assertThat(count.type()).isEqualTo(Long.class);
@@ -173,9 +178,15 @@ class ModelCoverageTest {
         assertThat(merged.render(new RenderContext())).isEqualTo("sumMerge(sumState(?))");
         assertThat(scalarFunction.arguments()).hasSize(1);
         assertThat(scalarFunction.render(new RenderContext())).isEqualTo("toUInt8(?)");
+        assertThat(aggregateFunction.aggregate()).isTrue();
+        assertThat(aggregateFunction.render(new RenderContext())).isEqualTo("sum(?)");
         assertThat(division.left()).isInstanceOf(ParameterExpression.class);
         assertThat(division.right()).isInstanceOf(ParameterExpression.class);
         assertThat(division.render(new RenderContext())).isEqualTo("? / ?");
+        assertThat(andLogical.render(new RenderContext())).isEqualTo("(? AND ?)");
+        assertThat(orLogical.render(new RenderContext())).isEqualTo("(? OR ?)");
+        assertThat(reference.render(new RenderContext())).isEqualTo("`name_alias`");
+        assertThat(rowNumber.render(new RenderContext())).isEqualTo("rowNumber() OVER ()");
         assertThatThrownBy(() -> FunctionExpression.of("toUInt8", Integer.class, false, new Expression<?>[]{null}))
             .isInstanceOf(NullPointerException.class)
             .hasMessageContaining("arguments");
@@ -189,6 +200,12 @@ class ModelCoverageTest {
         assertThat(Expressions.literal(true, Boolean.class).render(new RenderContext())).isEqualTo("1");
         assertThat(Expressions.literal(false, Boolean.class).render(new RenderContext())).isEqualTo("0");
         assertThat(Expressions.literal(42, Integer.class).render(new RenderContext())).isEqualTo("42");
+        assertThat(Expressions.literal(new Object() {
+            @Override
+            public String toString() {
+                return "custom'value";
+            }
+        }, Object.class).render(new RenderContext())).isEqualTo("custom'value");
     }
 
     @Test
@@ -342,13 +359,20 @@ class ModelCoverageTest {
         Table users = Table.of("users").as("u");
         Column<String> name = users.column("name", String.class);
         Column<Integer> age = users.column("age", Integer.class);
+        Column<String> city = users.column("city", String.class);
 
         WindowSpec spec = ClickHouseDsl.window().partitionBy(name).orderBy(age.desc());
+        WindowSpec partitionOnly = ClickHouseDsl.window().partitionBy(name, city);
+        WindowSpec orderOnly = ClickHouseDsl.window().orderBy(age.desc(), age.asc());
+        WindowSpec empty = ClickHouseDsl.window();
         WindowFunctionExpression<Long> rowNumber = ClickHouseDsl.rowNumber(spec);
 
         assertThat(spec.partitionBy()).containsExactly(name);
         assertThat(spec.orderBy()).hasSize(1);
         assertThat(spec.render(new RenderContext())).isEqualTo("PARTITION BY `u`.`name` ORDER BY `u`.`age` DESC");
+        assertThat(partitionOnly.render(new RenderContext())).isEqualTo("PARTITION BY `u`.`name`, `u`.`city`");
+        assertThat(orderOnly.render(new RenderContext())).isEqualTo("ORDER BY `u`.`age` DESC, `u`.`age` ASC");
+        assertThat(empty.render(new RenderContext())).isEmpty();
         assertThat(rowNumber.type()).isEqualTo(Long.class);
         assertThat(rowNumber.windowSpec()).isEqualTo(spec);
         assertThat(rowNumber.render(new RenderContext())).isEqualTo("rowNumber() OVER (PARTITION BY `u`.`name` ORDER BY `u`.`age` DESC)");
@@ -405,5 +429,20 @@ class ModelCoverageTest {
 
         assertThat(rendered.sql()).isEqualTo("SELECT `users`.`name` FROM `users`");
         assertThat(rendered.parameters()).isEmpty();
+    }
+
+    @Test
+    void renderedQueryDebugSqlSupportsCharacterFalseAndFallbackObject() {
+        RenderedQuery renderedQuery = new RenderedQuery(
+            "SELECT ?, ?, ?",
+            java.util.Arrays.asList('\'', false, new Object() {
+                @Override
+                public String toString() {
+                    return "alpha'beta";
+                }
+            })
+        );
+
+        assertThat(renderedQuery.debugSql()).isEqualTo("SELECT '''', 0, 'alpha''beta'");
     }
 }

@@ -47,4 +47,14 @@ class RenderedQueryDebugSqlTest {
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("Too many parameters");
     }
+
+    @Test
+    void preservesEscapedQuotesInsideSqlStringLiterals() {
+        RenderedQuery renderedQuery = new RenderedQuery(
+            "SELECT 'it''s ?', ?",
+            List.of("alice")
+        );
+
+        assertThat(renderedQuery.debugSql()).isEqualTo("SELECT 'it''s ?', 'alice'");
+    }
 }
