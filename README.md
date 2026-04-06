@@ -8,9 +8,9 @@
 
 <p align="center">
   <img src="./docs/badges/coverage.svg" alt="coverage" />
-  <img src="./docs/badges/tests.svg" alt="tests" />
+  <img src="https://github.com/heonny/clickhouse-dsl/actions/workflows/ci.yml/badge.svg?branch=main" alt="tests" />
   <img src="https://img.shields.io/maven-central/v/io.github.heonny/clickhouse-dsl?label=maven" alt="Maven Central version" />
-  <img src="./docs/badges/license.svg" alt="license" />
+  <img src="https://img.shields.io/github/license/heonny/clickhouse-dsl" alt="license" />
 </p>
 
 <h1 align="center">Fluent Queries for ClickHouse</h1>
