@@ -9,7 +9,7 @@
 <p align="center">
   <img src="./docs/badges/coverage.svg" alt="coverage" />
   <img src="./docs/badges/tests.svg" alt="tests" />
-  <img src="./docs/badges/version.svg" alt="version" />
+  <img src="https://img.shields.io/maven-central/v/io.github.heonny/clickhouse-dsl?label=maven" alt="Maven Central version" />
   <img src="./docs/badges/license.svg" alt="license" />
 </p>
 

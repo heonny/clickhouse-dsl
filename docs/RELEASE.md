@@ -12,7 +12,7 @@
   - `SIGNING_IN_MEMORY_KEY`
   - `SIGNING_IN_MEMORY_KEY_PASSWORD`
 - [`../build.gradle`](../build.gradle)의 `version` 값이 release 버전으로 설정되어 있음
-- README, badge 등 외부에 노출되는 버전 표기가 release 버전으로 정리되어 있음
+- README와 외부에 노출되는 버전 정보가 release 버전 기준으로 정리되어 있음
 - 작업 트리가 정리되어 있음
 
 ## 릴리즈 전 점검
@@ -28,8 +28,8 @@
 - Javadoc 생성 성공
 - jacoco coverage 기준 통과
 - [`../build.gradle`](../build.gradle)의 버전과 README의 dependency 예시가 현재 release 버전과 일치
-- README에서 노출되는 정적 버전 표기도 현재 release 버전과 일치
-  - 예: [`../docs/badges/version.svg`](../docs/badges/version.svg)
+- README에서 노출되는 버전 정보가 현재 release 버전과 일치
+  - 동적 배지를 쓴다면 Maven Central 반영 상태까지 확인
 - 검증 후 작업 트리에 의도하지 않은 변경이 남지 않음
 
 ## 릴리즈 절차
@@ -58,6 +58,7 @@ git push origin v0.1.2
 - tag는 version 정합성 확인과 검증이 끝난 뒤 마지막에 만든다.
 - 이미 push된 release tag는 수정하거나 재사용하지 않는다.
 - release 버전을 잘못 올렸다면 기존 tag를 움직이지 말고 다음 patch 버전으로 다시 준비한다.
+- 동적 버전 배지를 쓰는 경우 release 직후 Maven Central 반영 전까지 표시가 늦을 수 있다.
 
 ## GitHub Actions 동작
 

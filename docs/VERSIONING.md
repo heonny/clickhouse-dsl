@@ -12,7 +12,7 @@
 - Git tag는 항상 `v` prefix를 사용한다.
   - 예: `v0.1.2`
 - Git tag 버전과 [`../build.gradle`](../build.gradle)의 `version` 값은 반드시 같아야 한다.
-- release tag를 만들기 전, README와 badge 등 외부 노출 버전 표기도 같은 버전으로 맞춘다.
+- release tag를 만들기 전, README와 외부에 노출되는 버전 정보도 같은 release 기준으로 맞춘다.
 - 이미 push된 release tag는 수정하지 않고, 실수 시 다음 patch 버전으로 다시 release 한다.
 
 ## 증가 기준
@@ -41,7 +41,7 @@
 ## 릴리즈 흐름
 
 1. 다음 release 버전으로 [`../build.gradle`](../build.gradle)을 올린다.
-2. README, badge 등 외부 노출 버전 표기를 함께 맞춘다.
+2. README와 외부 노출 버전 정보를 함께 정리한다.
 3. 테스트와 문서를 정리한다.
 4. commit 한다.
 5. `v<version>` tag를 만든다.
