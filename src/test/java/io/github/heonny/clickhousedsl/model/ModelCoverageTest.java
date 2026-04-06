@@ -11,6 +11,7 @@ import io.github.heonny.clickhousedsl.validate.ValidationError;
 import io.github.heonny.clickhousedsl.validate.ValidationClause;
 import io.github.heonny.clickhousedsl.validate.ValidationCode;
 import io.github.heonny.clickhousedsl.validate.ValidationResult;
+import io.github.heonny.clickhousedsl.validate.QueryValidationException;
 import org.junit.jupiter.api.Test;
 
 class ModelCoverageTest {
@@ -134,6 +135,20 @@ class ModelCoverageTest {
     }
 
     @Test
+    void expressionDefaultHelpersCoverValueAndExpressionOverloads() {
+        Table users = Table.of("users").as("u");
+        Column<Integer> age = users.column("age", Integer.class);
+        ReferenceExpression<Integer> aliasRef = Expressions.ref("age_alias", Integer.class);
+
+        assertThat(age.aggregate()).isFalse();
+        assertThat(age.eq(21).render(new RenderContext())).isEqualTo("`u`.`age` = ?");
+        assertThat(age.gt(18).render(new RenderContext())).isEqualTo("`u`.`age` > ?");
+        assertThat(age.lt(aliasRef).render(new RenderContext())).isEqualTo("`u`.`age` < `age_alias`");
+        assertThat(age.gte(aliasRef).render(new RenderContext())).isEqualTo("`u`.`age` >= `age_alias`");
+        assertThat(age.lte(65).render(new RenderContext())).isEqualTo("`u`.`age` <= ?");
+    }
+
+    @Test
     void aggregateAndUtilityFactoriesRemainAccessible() {
         AggregateExpression<Long> count = ClickHouseDsl.count();
         Expression<Long> parameter = ClickHouseDsl.param(3L, Long.class);
@@ -231,6 +246,23 @@ class ModelCoverageTest {
         } catch (io.github.heonny.clickhousedsl.validate.QueryValidationException exception) {
             assertThat(exception.validationResult()).isSameAs(result);
         }
+    }
+
+    @Test
+    void validationResultAddByCodeAndQueryValidationExceptionMessageVariants() {
+        ValidationResult result = new ValidationResult();
+        result.add(ValidationCode.DUPLICATE_SETTING_NAME);
+
+        assertThat(result.errors()).hasSize(1);
+        assertThat(result.errors().get(0).detail()).isNull();
+
+        QueryValidationException emptyResultException = new QueryValidationException(new ValidationResult());
+        assertThat(emptyResultException).hasMessage("Query validation failed.");
+
+        ValidationResult blankDetailResult = new ValidationResult();
+        blankDetailResult.add("CODE", ValidationClause.SELECT, "message", "   ");
+        QueryValidationException blankDetailException = new QueryValidationException(blankDetailResult);
+        assertThat(blankDetailException).hasMessage("Query validation failed with 1 error(s). First error [CODE] in SELECT: message");
     }
 
     @Test
