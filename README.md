@@ -35,7 +35,7 @@
 <dependency>
     <groupId>io.github.heonny</groupId>
     <artifactId>clickhouse-dsl</artifactId>
-    <version>0.1.2</version>
+    <version>0.1.3</version>
 </dependency>
 ```
 
@@ -67,7 +67,7 @@ Gradle:
 
 ```gradle
 dependencies {
-    implementation("io.github.heonny:clickhouse-dsl:0.1.2")
+    implementation("io.github.heonny:clickhouse-dsl:0.1.3")
 }
 ```
 
@@ -77,7 +77,7 @@ Maven:
 <dependency>
     <groupId>io.github.heonny</groupId>
     <artifactId>clickhouse-dsl</artifactId>
-    <version>0.1.2</version>
+    <version>0.1.3</version>
 </dependency>
 ```
 
