@@ -166,6 +166,8 @@ jdbcTemplate.query(
 - `ValidationResult`를 무시하는 패턴
 - 같은 setting 이름을 여러 번 넣는 패턴
 
+추가로, DSL 객체의 내부 상태는 안정적으로 다루되 `param(...)`이나 `literal(...)`에 넘기는 값 자체까지 깊은 복사를 하지는 않습니다. 동시 사용이 필요한 값은 immutable 객체를 넘기거나 호출자 쪽에서 변경되지 않도록 다루는 편을 권장합니다.
+
 현재 이 라이브러리의 중심 기능은 실행기보다 `typed DSL + validation + SQL rendering`입니다. 실제 실행은 `JdbcTemplate`, MyBatis, 또는 기존 사내 실행 계층에 맡기는 편을 권장합니다.
 
 ## Why Not JPA / JdbcTemplate / MyBatis

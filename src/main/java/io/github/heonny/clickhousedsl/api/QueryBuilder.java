@@ -20,9 +20,10 @@ import java.util.Objects;
  *
  * <p>The builder intentionally keeps state local until {@link #build()} is called. At that point
  * it materializes an immutable {@link Query}. This class is package-private so callers are forced
- * to go through {@link ClickHouseDsl}.
+ * to go through {@link ClickHouseDsl}. Mutations are synchronized so a shared builder remains
+ * linearizable when callers coordinate through multiple threads.
  */
-final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.QueryStep, ClickHouseDsl.GroupedQueryStep, ClickHouseDsl.JoinOnStep {
+final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.QueryStep, ClickHouseDsl.GroupedQueryStep {
 
     private final List<Expression<?>> selections;
     private final List<WithClause> withClauses = new ArrayList<>();
@@ -32,6 +33,7 @@ final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.Quer
     private final List<Sort> orderBy = new ArrayList<>();
     private final List<Setting> settings = new ArrayList<>();
     private final List<SetOperation> setOperations = new ArrayList<>();
+    private final Object mutex = new Object();
 
     private Table from;
     private Double sampleRatio;
@@ -39,11 +41,10 @@ final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.Quer
     private Expression<Boolean> where;
     private Expression<Boolean> having;
     private Integer limit;
-    private JoinType pendingJoinType;
-    private Table pendingJoinTable;
+    private int pendingJoinSteps;
 
     QueryBuilder(Expression<?>... selections) {
-        this.selections = requireNonNullElements("selections", selections);
+        this.selections = List.copyOf(requireNonNullElements("selections", selections));
         if (this.selections.isEmpty()) {
             throw new IllegalArgumentException("At least one selection is required");
         }
@@ -51,54 +52,51 @@ final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.Quer
 
     @Override
     public ClickHouseDsl.QueryStep from(Table table) {
-        this.from = Objects.requireNonNull(table, "table");
+        synchronized (mutex) {
+            this.from = Objects.requireNonNull(table, "table");
+        }
         return this;
     }
 
     @Override
     public ClickHouseDsl.QueryStep with(WithClause... clauses) {
-        withClauses.addAll(requireNonNullElements("clauses", clauses));
+        synchronized (mutex) {
+            withClauses.addAll(requireNonNullElements("clauses", clauses));
+        }
         return this;
     }
 
     @Override
     public ClickHouseDsl.QueryStep prewhere(Expression<Boolean> expression) {
-        this.prewhere = Objects.requireNonNull(expression, "expression");
+        synchronized (mutex) {
+            this.prewhere = Objects.requireNonNull(expression, "expression");
+        }
         return this;
     }
 
     @Override
     public ClickHouseDsl.QueryStep where(Expression<Boolean> expression) {
-        this.where = Objects.requireNonNull(expression, "expression");
+        synchronized (mutex) {
+            this.where = Objects.requireNonNull(expression, "expression");
+        }
         return this;
     }
 
     @Override
     public ClickHouseDsl.JoinOnStep innerJoin(Table table) {
-        this.pendingJoinType = JoinType.INNER;
-        this.pendingJoinTable = Objects.requireNonNull(table, "table");
-        return this;
+        return registerPendingJoin(JoinType.INNER, table);
     }
 
     @Override
     public ClickHouseDsl.JoinOnStep leftJoin(Table table) {
-        this.pendingJoinType = JoinType.LEFT;
-        this.pendingJoinTable = Objects.requireNonNull(table, "table");
-        return this;
-    }
-
-    @Override
-    public <T> ClickHouseDsl.QueryStep on(Expression<T> left, Expression<T> right) {
-        // JOIN is stored only when both the join kind and target table were declared first.
-        joins.add(new Join(pendingJoinType, pendingJoinTable, left, right));
-        pendingJoinType = null;
-        pendingJoinTable = null;
-        return this;
+        return registerPendingJoin(JoinType.LEFT, table);
     }
 
     @Override
     public ClickHouseDsl.QueryStep arrayJoin(Expression<?>... expressions) {
-        arrayJoins.addAll(requireNonNullElements("expressions", expressions));
+        synchronized (mutex) {
+            arrayJoins.addAll(requireNonNullElements("expressions", expressions));
+        }
         return this;
     }
 
@@ -107,25 +105,33 @@ final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.Quer
         if (ratio <= 0.0d || ratio > 1.0d) {
             throw new IllegalArgumentException("Sample ratio must be in (0, 1]");
         }
-        this.sampleRatio = ratio;
+        synchronized (mutex) {
+            this.sampleRatio = ratio;
+        }
         return this;
     }
 
     @Override
     public ClickHouseDsl.GroupedQueryStep groupBy(Expression<?>... expressions) {
-        groupBy.addAll(requireNonNullElements("expressions", expressions));
+        synchronized (mutex) {
+            groupBy.addAll(requireNonNullElements("expressions", expressions));
+        }
         return this;
     }
 
     @Override
     public ClickHouseDsl.GroupedQueryStep having(Expression<Boolean> expression) {
-        this.having = Objects.requireNonNull(expression, "expression");
+        synchronized (mutex) {
+            this.having = Objects.requireNonNull(expression, "expression");
+        }
         return this;
     }
 
     @Override
     public ClickHouseDsl.QueryStep orderBy(Sort... sorts) {
-        orderBy.addAll(requireNonNullElements("sorts", sorts));
+        synchronized (mutex) {
+            orderBy.addAll(requireNonNullElements("sorts", sorts));
+        }
         return this;
     }
 
@@ -134,53 +140,70 @@ final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.Quer
         if (limit <= 0) {
             throw new IllegalArgumentException("Limit must be positive");
         }
-        this.limit = limit;
+        synchronized (mutex) {
+            this.limit = limit;
+        }
         return this;
     }
 
     @Override
     public ClickHouseDsl.QueryStep settings(Setting... settings) {
-        this.settings.addAll(requireNonNullElements("settings", settings));
+        synchronized (mutex) {
+            this.settings.addAll(requireNonNullElements("settings", settings));
+        }
         return this;
     }
 
     @Override
     public ClickHouseDsl.QueryStep union(Query query) {
-        setOperations.add(new SetOperation(UnionType.DISTINCT, Objects.requireNonNull(query, "query")));
+        synchronized (mutex) {
+            setOperations.add(new SetOperation(UnionType.DISTINCT, Objects.requireNonNull(query, "query")));
+        }
         return this;
     }
 
     @Override
     public ClickHouseDsl.QueryStep unionAll(Query query) {
-        setOperations.add(new SetOperation(UnionType.ALL, Objects.requireNonNull(query, "query")));
+        synchronized (mutex) {
+            setOperations.add(new SetOperation(UnionType.ALL, Objects.requireNonNull(query, "query")));
+        }
         return this;
     }
 
     @Override
     public Query build() {
-        if (from == null) {
-            throw new IllegalStateException("FROM is required");
+        synchronized (mutex) {
+            if (from == null) {
+                throw new IllegalStateException("FROM is required");
+            }
+            // A dangling JOIN without ON is a partially built query and must fail fast here.
+            if (pendingJoinSteps > 0) {
+                throw new IllegalStateException("Join must be completed with ON");
+            }
+            return new Query(
+                selections,
+                withClauses,
+                from,
+                joins,
+                arrayJoins,
+                sampleRatio,
+                prewhere,
+                where,
+                groupBy,
+                having,
+                orderBy,
+                limit,
+                settings,
+                setOperations
+            );
         }
-        // A dangling JOIN without ON is a partially built query and must fail fast here.
-        if (pendingJoinType != null || pendingJoinTable != null) {
-            throw new IllegalStateException("Join must be completed with ON");
+    }
+
+    private ClickHouseDsl.JoinOnStep registerPendingJoin(JoinType type, Table table) {
+        synchronized (mutex) {
+            pendingJoinSteps++;
+            return new PendingJoinStep(type, Objects.requireNonNull(table, "table"));
         }
-        return new Query(
-            selections,
-            withClauses,
-            from,
-            joins,
-            arrayJoins,
-            sampleRatio,
-            prewhere,
-            where,
-            groupBy,
-            having,
-            orderBy,
-            limit,
-            settings,
-            setOperations
-        );
     }
 
     private static <T> List<T> requireNonNullElements(String label, T[] values) {
@@ -190,5 +213,29 @@ final class QueryBuilder implements ClickHouseDsl.SelectStep, ClickHouseDsl.Quer
             Objects.requireNonNull(value, label + " must not contain null");
         }
         return list;
+    }
+
+    private final class PendingJoinStep implements ClickHouseDsl.JoinOnStep {
+        private final JoinType type;
+        private final Table table;
+        private boolean completed;
+
+        private PendingJoinStep(JoinType type, Table table) {
+            this.type = type;
+            this.table = table;
+        }
+
+        @Override
+        public <T> ClickHouseDsl.QueryStep on(Expression<T> left, Expression<T> right) {
+            synchronized (mutex) {
+                if (completed) {
+                    throw new IllegalStateException("Join has already been completed");
+                }
+                joins.add(new Join(type, table, left, right));
+                completed = true;
+                pendingJoinSteps--;
+                return QueryBuilder.this;
+            }
+        }
     }
 }

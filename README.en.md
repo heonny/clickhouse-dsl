@@ -166,6 +166,8 @@ Avoid:
 - ignoring `ValidationResult`
 - adding the same setting twice
 
+Also note that the DSL protects its own internal state, but it does not deep-copy values passed through `param(...)` or `literal(...)`. For concurrent use, prefer immutable values or ensure those objects are not being mutated by the caller.
+
 The center of this library is `typed DSL + validation + SQL rendering`. In practice, execution is still best handled by tools you already use, such as `JdbcTemplate`, MyBatis, or your own internal execution boundary.
 
 ## Why Not JPA / JdbcTemplate / MyBatis
